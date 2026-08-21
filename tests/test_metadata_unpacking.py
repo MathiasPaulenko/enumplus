@@ -35,7 +35,7 @@ def test_tuple_three_elements() -> None:
 
 def test_dict_value_not_unpacked() -> None:
     class Config(Enum):
-        DEFAULT = {"key": "val"}
+        DEFAULT = {"key": "val"}  # noqa: RUF012
 
     assert Config.DEFAULT.value == {"key": "val"}
 

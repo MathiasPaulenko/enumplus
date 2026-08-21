@@ -285,7 +285,7 @@ def test_contains_incompatible() -> None:
         RED = "red"
 
     assert 42 not in Color
-    assert None not in Color  # noqa: E711
+    assert None not in Color
 
 
 def test_choices_basic() -> None:

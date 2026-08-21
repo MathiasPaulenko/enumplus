@@ -4,9 +4,9 @@ import pytest
 
 pytest.importorskip("pydantic")
 
-from pydantic import BaseModel, ValidationError  # noqa: E402
+from pydantic import BaseModel, ValidationError
 
-from enumplus import Enum  # noqa: E402
+from enumplus import Enum
 
 
 class Color(Enum):
