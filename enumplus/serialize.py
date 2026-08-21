@@ -6,6 +6,12 @@ from typing import Any, cast
 from enumplus.enum import Enum
 
 
+def _serialize_value(value: Any) -> Any:
+    if callable(value):
+        return value()
+    return value
+
+
 def to_json(cls: type[Enum]) -> str:
     data: dict[str, Any] = {
         "name": cls.__name__,
@@ -14,7 +20,9 @@ def to_json(cls: type[Enum]) -> str:
                 "name": member.name,
                 "value": member.value,
                 "label": member.label,
-                "metadata": member._metadata_,
+                "metadata": {
+                    k: _serialize_value(v) for k, v in member._metadata_.items()
+                },
             }
             for member in cls
         ],
