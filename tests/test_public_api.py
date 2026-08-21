@@ -15,4 +15,4 @@ def test_all_exports() -> None:
 
 
 def test_version() -> None:
-    assert enumplus.__version__ == "0.1.0"
+    assert enumplus.__version__ == "1.1.0"
