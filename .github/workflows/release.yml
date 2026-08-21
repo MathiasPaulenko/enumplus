@@ -80,30 +80,74 @@ jobs:
         run: |
           PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
           if [ -z "$PREVIOUS_TAG" ]; then
-            BODY=$(git log --pretty=format:"- %s (%h)" HEAD)
+            RANGE="HEAD"
           else
-            BODY=$(git log --pretty=format:"- %s (%h)" ${PREVIOUS_TAG}..HEAD)
+            RANGE="${PREVIOUS_TAG}..HEAD"
           fi
-          BODY="${BODY//$'\n'/'%0A'}"
-          echo "body=$BODY" >> $GITHUB_OUTPUT
+
+          # Group commits by conventional commit type
+          FEATURES=$(git log --pretty=format:"- %s" ${RANGE} --grep="^feat" --grep="^add" --grep="^support" -i | grep -v "release:" || true)
+          FIXES=$(git log --pretty=format:"- %s" ${RANGE} --grep="^fix" --grep="^patch" -i || true)
+          REFACTOR=$(git log --pretty=format:"- %s" ${RANGE} --grep="^refactor" --grep="^clean" -i || true)
+          DOCS=$(git log --pretty=format:"- %s" ${RANGE} --grep="^docs" --grep="^readme" -i || true)
+          TESTS=$(git log --pretty=format:"- %s" ${RANGE} --grep="^test" -i || true)
+          CHORE=$(git log --pretty=format:"- %s" ${RANGE} --grep="^chore" --grep="^ci" --grep="^build" -i || true)
+          RELEASE=$(git log --pretty=format:"- %s" ${RANGE} --grep="^release" -i || true)
+
+          {
+            echo "body<<EOF"
+            if [ -n "$FEATURES" ]; then
+              echo "### Features"
+              echo ""
+              echo "$FEATURES"
+              echo ""
+            fi
+            if [ -n "$FIXES" ]; then
+              echo "### Bug Fixes"
+              echo ""
+              echo "$FIXES"
+              echo ""
+            fi
+            if [ -n "$REFACTOR" ]; then
+              echo "### Refactoring"
+              echo ""
+              echo "$REFACTOR"
+              echo ""
+            fi
+            if [ -n "$DOCS" ]; then
+              echo "### Documentation"
+              echo ""
+              echo "$DOCS"
+              echo ""
+            fi
+            if [ -n "$TESTS" ]; then
+              echo "### Tests"
+              echo ""
+              echo "$TESTS"
+              echo ""
+            fi
+            if [ -n "$CHORE" ]; then
+              echo "### Chores"
+              echo ""
+              echo "$CHORE"
+              echo ""
+            fi
+            echo "---"
+            echo ""
+            echo "**PyPI**: https://pypi.org/project/enumplus/"
+            echo "**Full Changelog**: https://github.com/MathiasPaulenko/enumplus/compare/${PREVIOUS_TAG}...${{ github.ref_name }}"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
           name: ${{ github.ref_name }}
-          body: |
-            ## Changes
-
-            ${{ steps.changelog.outputs.body }}
-
-            ---
-
-            **PyPI**: https://pypi.org/project/enumplus/
+          body: ${{ steps.changelog.outputs.body }}
           files: dist/*
           draft: false
           prerelease: false
-          generate_release_notes: true
 
   publish-pypi:
     needs: build
