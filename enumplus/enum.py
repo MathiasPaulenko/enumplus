@@ -77,7 +77,15 @@ def _safe_equal(a: Any, b: Any) -> bool:
 
 @dataclass_transform()
 class EnumMeta(enum.EnumMeta):
-    """Base metaclass for enumplus enums."""
+    """Metaclass for enumplus enums.
+
+    Extends ``enum.EnumMeta`` with:
+
+    - Custom namespace (``_EnumPlusDict``) that unwraps metadata tuples
+      and separates class config from enum members.
+    - Per-member metadata and label assignment after member creation.
+    - Safe ``__contains__`` that handles unhashable and non-boolean values.
+    """
 
     @classmethod
     def __prepare__(  # type: ignore[override]
@@ -122,8 +130,7 @@ class EnumMeta(enum.EnumMeta):
                 ):
                     actual_value, metadata = value
                     member_metadata[key] = metadata
-                    if not isinstance(namespace, _EnumPlusDict):
-                        dict.__setitem__(namespace, key, actual_value)
+                    dict.__setitem__(namespace, key, actual_value)
 
         new_cls = super().__new__(cls, name, bases, namespace, **kwargs)
 
