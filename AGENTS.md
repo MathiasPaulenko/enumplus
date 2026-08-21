@@ -10,7 +10,7 @@
 - `choices()`, `from_value()`, `from_name()`, `filter()`, `get()`, `map()`
 - JSON serialization (`to_json`, `from_json`, `SerializableEncoder`)
 - Declaration-order comparison (`OrderedEnum`)
-- Optional Pydantic v2 integration
+- Optional Pydantic v2 integration (install with `pip install "enumplus[pydantic]"`)
 
 Requires Python `>=3.11`.
 

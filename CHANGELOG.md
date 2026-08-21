@@ -5,6 +5,16 @@ All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- Improved README with table of contents, requirements section, and dynamic CI badge.
+- Added `pydantic` optional dependency extra for Pydantic v2 integration.
+- Added concurrency groups to CI and release workflows to cancel superseded runs.
+- Updated issue templates with correct version examples.
+- Updated CONTRIBUTING with cross-version testing instructions and repository name clarification.
+
 ## [1.1.0] - 2025-01-15
 
 ### Added
@@ -53,3 +63,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `SerializableEncoder` for `json.dumps`.
 - Pydantic v2 integration via `__get_pydantic_core_schema__`.
 - Full test suite, CI, and release workflows.
+
+[Unreleased]: https://github.com/MathiasPaulenko/enumpy/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/MathiasPaulenko/enumpy/releases/tag/v1.1.0
+[1.0.0]: https://github.com/MathiasPaulenko/enumpy/releases/tag/v1.0.0

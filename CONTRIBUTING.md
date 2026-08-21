@@ -17,6 +17,8 @@ Thank you for your interest in contributing to enumplus! This document describes
    pip install -e ".[dev]"
    ```
 
+> **Note:** The git repository is named `enumpy`, while the package name is `enumplus`. This is expected — the repository name predates the package rename.
+
 ## Development Workflow
 
 1. Create a branch for your feature or bugfix:
@@ -51,12 +53,23 @@ Thank you for your interest in contributing to enumplus! This document describes
 - Run the full suite with `pytest`.
 - Do not weaken or delete existing tests without explicit justification.
 
+## Cross-Version Testing
+
+CI tests Python 3.11, 3.12, 3.13, and 3.14. To test locally against multiple Python versions, use the Python launcher (Windows) or `pyenv` (macOS/Linux):
+
+```bash
+py -3.11 -m pip install -e ".[dev]"
+py -3.11 -m pytest --tb=short
+py -3.11 -m mypy --strict enumplus/ tests/
+```
+
 ## Pull Request Guidelines
 
 - Keep PRs focused and small.
 - Reference any related issues (e.g., `Closes #123`).
 - Ensure all CI checks pass before requesting review.
 - Update documentation (`README.md`) if your change affects the public API.
+- Add a `CHANGELOG.md` entry under the `[Unreleased]` section.
 
 ## Reporting Issues
 

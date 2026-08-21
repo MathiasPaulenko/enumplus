@@ -32,6 +32,7 @@ Issues = "https://github.com/MathiasPaulenko/enumpy/issues"
 Changelog = "https://github.com/MathiasPaulenko/enumpy/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
+pydantic = ["pydantic>=2.0"]
 dev = [
     "pytest>=8.0",
     "ruff>=0.6",

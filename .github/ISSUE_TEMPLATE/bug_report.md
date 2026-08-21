@@ -31,7 +31,7 @@ A clear and concise description of what actually happened.
 ## Environment
 
 - Python version: [e.g. 3.12.1]
-- enumplus version: [e.g. 0.1.0]
+- enumplus version: [e.g. 1.1.0]
 - OS: [e.g. Ubuntu 22.04, Windows 11, macOS 14]
 
 ## Additional context

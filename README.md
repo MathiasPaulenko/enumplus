@@ -3,17 +3,59 @@
 ![PyPI](https://img.shields.io/pypi/v/enumplus)
 ![Python](https://img.shields.io/badge/python-3.11+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
-![Tests](https://img.shields.io/badge/tests-169%20passing-brightgreen)
+![Tests](https://github.com/MathiasPaulenko/enumpy/actions/workflows/ci.yml/badge.svg)
 
-## Why
+Python's `enum.Enum` is basic. `enumplus` adds display names, metadata, JSON
+serialization, `choices()`, and value-based comparison — all with zero runtime
+dependencies and full stdlib compatibility. Just change your import and
+everything still works.
 
-Python's `enum.Enum` is basic. `enumplus` adds display names, metadata, JSON serialization, `choices()`, and value-based comparison — all with zero dependencies and full stdlib compatibility. Just change your import and everything still works.
+## Contents
+
+- [Installation](#installation)
+- [Requirements](#requirements)
+- [Quick Start](#quick-start)
+- [Features](#features)
+  - [Display Names (label)](#display-names-label)
+  - [Metadata](#metadata)
+  - [choices()](#choices)
+  - [from_value() / from_name()](#from_value--from_name)
+  - [is_valid() / validate()](#is_valid--validate)
+  - [values() / names() / labels() / keys()](#values--names--labels--keys)
+  - [filter()](#filter)
+  - [Comparison with values (==)](#comparison-with-values-)
+  - [Membership test (in)](#membership-test-in)
+  - [OrderedEnum](#orderedenum)
+  - [JSON Serialization](#json-serialization-to_json--from_json)
+  - [SerializableEncoder](#serializableencoder)
+  - [Pydantic v2](#pydantic-v2)
+  - [get() with default](#get-with-default)
+  - [map()](#map)
+  - [get_initial() / get_final()](#get_initial--get_final)
+  - [to_dict()](#to_dict)
+  - [i18n / Translatable Labels](#i18n--translatable-labels)
+  - [Type hints in metadata](#type-hints-in-metadata)
+- [Migration from stdlib](#migration-from-stdlib)
+- [Changelog](#changelog)
+- [Contributing](#contributing)
+- [License](#license)
 
 ## Installation
 
 ```bash
 pip install enumplus
 ```
+
+For Pydantic v2 integration:
+
+```bash
+pip install "enumplus[pydantic]"
+```
+
+## Requirements
+
+- Python 3.11 or higher
+- No runtime dependencies (Pydantic is optional and only required for Pydantic integration)
 
 ## Quick Start
 
@@ -101,7 +143,7 @@ Color.from_value("red")              # Color.RED
 Color.from_value("blue")             # raises ValueError
 Color.from_value("blue", default=None)  # None
 
-# Case-insensitive lookup (v1.1.0)
+# Case-insensitive lookup
 Color.from_value("Red", case_insensitive=True)   # Color.RED
 Color.from_value("GREEN", case_insensitive=True) # Color.GREEN
 
@@ -140,7 +182,7 @@ class Color(Enum):
 Color.values()   # ["red", "green"]
 Color.names()    # ["RED", "GREEN"]
 Color.labels()   # ["Red", "Green"]
-Color.keys()     # ["RED", "GREEN"]  (v1.1.0)
+Color.keys()     # ["RED", "GREEN"]
 ```
 
 ### filter()
@@ -260,7 +302,7 @@ print(model.model_dump())        # {"color": "red"}
 print(model.model_dump_json())   # '{"color":"red"}'
 ```
 
-#### Serialize by name (v1.1.0)
+#### Serialize by name
 
 Set `serialize_by_name = True` on the enum class to validate and serialize by member name instead of value.
 
@@ -282,7 +324,7 @@ print(model.model_dump())             # {"color": "RED"}
 print(model.model_dump_json())        # '{"color":"RED"}'
 ```
 
-### get() with default (v1.1.0)
+### get() with default
 
 Dict-style lookup that returns `None` (or a custom default) instead of raising.
 
@@ -295,7 +337,7 @@ Color.get("blue")            # None
 Color.get("blue", default=Color.RED)  # Color.RED
 ```
 
-### map() (v1.1.0)
+### map()
 
 Map each member to a value via a dictionary. Returns `{name: mapped_value}`.
 
@@ -311,7 +353,7 @@ Color.map({Color.RED: "#FF0000"})
 # {"RED": "#FF0000", "GREEN": None}
 ```
 
-### get_initial() / get_final() (v1.1.0)
+### get_initial() / get_final()
 
 Get the first or last member by declaration order.
 
@@ -325,7 +367,7 @@ Color.get_initial()   # Color.RED
 Color.get_final()     # Color.BLUE
 ```
 
-### to_dict() (v1.1.0)
+### to_dict()
 
 Serialize the entire enum to a nested dictionary with `value`, `label`, and `metadata` per member.
 
@@ -341,7 +383,7 @@ Color.to_dict()
 # }
 ```
 
-### i18n / Translatable Labels (v1.1.0)
+### i18n / Translatable Labels
 
 Labels can be callables (e.g. `lambda` functions) for dynamic, locale-aware translations. The `label` property evaluates the callable on every access.
 
@@ -394,6 +436,10 @@ All existing enum code continues to work — `Enum["RED"]`, `Enum("red")`, `list
 
 See [CHANGELOG.md](CHANGELOG.md) for a full history of changes.
 
+## Contributing
+
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to get started, code style, and pull request workflow.
+
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE) for details.
