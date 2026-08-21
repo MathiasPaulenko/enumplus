@@ -3,7 +3,7 @@
 ![PyPI](https://img.shields.io/pypi/v/enumplus)
 ![Python](https://img.shields.io/badge/python-3.11+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
-![Tests](https://img.shields.io/badge/tests-116%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-155%20passing-brightgreen)
 
 ## Why
 
@@ -90,7 +90,7 @@ print(Priority.choices())   # [(1, "Low"), (2, "Medium"), (3, "High")]
 
 ### from_value() / from_name()
 
-Look up members by value or name, with optional defaults.
+Look up members by value or name, with optional defaults and case-insensitive matching.
 
 ```python
 class Color(Enum):
@@ -101,8 +101,15 @@ Color.from_value("red")              # Color.RED
 Color.from_value("blue")             # raises ValueError
 Color.from_value("blue", default=None)  # None
 
+# Case-insensitive lookup (v1.1.0)
+Color.from_value("Red", case_insensitive=True)   # Color.RED
+Color.from_value("GREEN", case_insensitive=True) # Color.GREEN
+
 Color.from_name("RED")               # Color.RED
 Color.from_name("BLUE", default=None)   # None
+
+# Case-insensitive name lookup
+Color.from_name("red", case_insensitive=True)   # Color.RED
 ```
 
 ### is_valid() / validate()
@@ -121,9 +128,9 @@ Color.validate("red")       # Color.RED
 Color.validate("blue")      # raises ValueError
 ```
 
-### values() / names() / labels()
+### values() / names() / labels() / keys()
 
-Get lists of all values, names, or labels.
+Get lists of all values, names, or labels. `keys()` is an alias of `names()` for dict-like ergonomics.
 
 ```python
 class Color(Enum):
@@ -133,6 +140,7 @@ class Color(Enum):
 Color.values()   # ["red", "green"]
 Color.names()    # ["RED", "GREEN"]
 Color.labels()   # ["Red", "Green"]
+Color.keys()     # ["RED", "GREEN"]  (v1.1.0)
 ```
 
 ### filter()
@@ -251,6 +259,106 @@ print(model.color)               # Color.RED
 print(model.model_dump())        # {"color": "red"}
 print(model.model_dump_json())   # '{"color":"red"}'
 ```
+
+#### Serialize by name (v1.1.0)
+
+Set `serialize_by_name = True` on the enum class to validate and serialize by member name instead of value.
+
+```python
+from pydantic import BaseModel
+from enumplus import Enum
+
+class ColorByName(Enum):
+    RED = "red"
+    GREEN = "green"
+
+    serialize_by_name = True
+
+class MyModelByName(BaseModel):
+    color: ColorByName
+
+model = MyModelByName(color="RED")    # validates "RED" -> ColorByName.RED
+print(model.model_dump())             # {"color": "RED"}
+print(model.model_dump_json())        # '{"color":"RED"}'
+```
+
+### get() with default (v1.1.0)
+
+Dict-style lookup that returns `None` (or a custom default) instead of raising.
+
+```python
+class Color(Enum):
+    RED = "red"
+
+Color.get("red")             # Color.RED
+Color.get("blue")            # None
+Color.get("blue", default=Color.RED)  # Color.RED
+```
+
+### map() (v1.1.0)
+
+Map each member to a value via a dictionary. Returns `{name: mapped_value}`.
+
+```python
+class Color(Enum):
+    RED = "red"
+    GREEN = "green"
+
+Color.map({Color.RED: "#FF0000", Color.GREEN: "#00FF00"})
+# {"RED": "#FF0000", "GREEN": "#00FF00"}
+
+Color.map({Color.RED: "#FF0000"})
+# {"RED": "#FF0000", "GREEN": None}
+```
+
+### get_initial() / get_final() (v1.1.0)
+
+Get the first or last member by declaration order.
+
+```python
+class Color(Enum):
+    RED = "red"
+    GREEN = "green"
+    BLUE = "blue"
+
+Color.get_initial()   # Color.RED
+Color.get_final()     # Color.BLUE
+```
+
+### to_dict() (v1.1.0)
+
+Serialize the entire enum to a nested dictionary with `value`, `label`, and `metadata` per member.
+
+```python
+class Color(Enum):
+    RED = ("red", {"hex": "#FF0000"})
+    GREEN = "green"
+
+Color.to_dict()
+# {
+#   "RED": {"value": "red", "label": "Red", "metadata": {"hex": "#FF0000"}},
+#   "GREEN": {"value": "green", "label": "Green", "metadata": {}}
+# }
+```
+
+### i18n / Translatable Labels (v1.1.0)
+
+Labels can be callables (e.g. `lambda` functions) for dynamic, locale-aware translations. The `label` property evaluates the callable on every access.
+
+```python
+translations = {"RED": "Rojo", "GREEN": "Verde"}
+
+class Color(Enum):
+    RED = ("red", {"label": lambda: translations["RED"]})
+    GREEN = ("green", {"label": lambda: translations["GREEN"]})
+
+print(Color.RED.label)     # "Rojo"
+print(str(Color.RED))      # "Rojo"
+print(Color.labels())      # ["Rojo", "Verde"]
+print(Color.choices())     # [("red", "Rojo"), ("green", "Verde")]
+```
+
+Callable labels work everywhere: `choices()`, `to_dict()`, `to_json()`, `labels()`, and `str()`.
 
 ### Type hints in metadata
 
