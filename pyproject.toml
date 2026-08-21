@@ -1,0 +1,32 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "enumplus"
+version = "0.1.0"
+description = "Enhanced Python enums with metadata, serialization, and choices"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [{ name = "Mathias Paulenko", email = "mathias.paulenko@outlook.com" }]
+keywords = ["enum", "enumeration", "metadata", "serialization", "choices"]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "ruff",
+    "mypy",
+    "pydantic",
+    "typing_extensions",
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.mypy]
+strict = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
