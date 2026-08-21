@@ -107,3 +107,25 @@ def test_repr_format() -> None:
     assert "Color" in r
     assert "RED" in r
     assert "'red'" in r
+
+
+def test_auto_after_metadata_tuple() -> None:
+    class Number(Enum):
+        ONE = (1, {"label": "One"})
+        TWO = auto()
+        THREE = auto()
+
+    assert Number.ONE.value == 1  # type: ignore[comparison-overlap]
+    assert Number.TWO.value == 2
+    assert Number.THREE.value == 3
+
+
+def test_auto_with_class_config() -> None:
+    class Number(Enum):
+        serialize_by_name = True
+        ONE = auto()
+        TWO = auto()
+
+    assert Number.ONE.value == 1
+    assert Number.TWO.value == 2
+    assert Number.serialize_by_name is True

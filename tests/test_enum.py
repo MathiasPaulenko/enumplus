@@ -288,6 +288,48 @@ def test_contains_incompatible() -> None:
     assert None not in Color
 
 
+def test_eq_with_unhashable_value() -> None:
+    class Container(Enum):
+        LIST = [1, 2]  # noqa: RUF012
+
+    assert Container.LIST == [1, 2]
+    assert Container.LIST != [1, 3]
+    assert Container.LIST != (1, 2)
+
+
+def test_hash_with_unhashable_value() -> None:
+    class Container(Enum):
+        LIST = [1, 2]  # noqa: RUF012
+
+    # Unhashable values should fall back to id(), so the member itself is usable
+    # as a dict key.
+    d = {Container.LIST: 1}
+    assert d[Container.LIST] == 1
+
+
+def test_contains_unhashable_value() -> None:
+    class Container(Enum):
+        LIST = [1, 2]  # noqa: RUF012
+
+    assert [1, 2] in Container
+    assert [1, 3] not in Container
+
+
+def test_from_value_unhashable_value() -> None:
+    class Container(Enum):
+        LIST = [1, 2]  # noqa: RUF012
+
+    assert Container.from_value([1, 2]) is Container.LIST
+
+
+def test_is_valid_unhashable_value() -> None:
+    class Container(Enum):
+        LIST = [1, 2]  # noqa: RUF012
+
+    assert Container.is_valid([1, 2]) is True
+    assert Container.is_valid([1, 3]) is False
+
+
 def test_choices_basic() -> None:
     class Color(Enum):
         RED = ("red", {"label": "Red"})

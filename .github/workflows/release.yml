@@ -80,7 +80,7 @@ jobs:
         run: |
           PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
           if [ -z "$PREVIOUS_TAG" ]; then
-            RANGE="HEAD"
+            RANGE=""
           else
             RANGE="${PREVIOUS_TAG}..HEAD"
           fi
@@ -135,7 +135,11 @@ jobs:
             echo "---"
             echo ""
             echo "**PyPI**: https://pypi.org/project/enumplus/"
-            echo "**Full Changelog**: https://github.com/MathiasPaulenko/enumplus/compare/${PREVIOUS_TAG}...${{ github.ref_name }}"
+            if [ -n "$PREVIOUS_TAG" ]; then
+              echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/${PREVIOUS_TAG}...${{ github.ref_name }}"
+            else
+              echo "**Commits**: https://github.com/${{ github.repository }}/commits/${{ github.ref_name }}"
+            fi
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 

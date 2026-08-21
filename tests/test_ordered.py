@@ -76,4 +76,4 @@ def test_ordered_non_member_raises() -> None:
         HIGH = 3
 
     with pytest.raises(TypeError):
-        _ = Priority.LOW < "red"  # type: ignore[operator]
+        _ = Priority.LOW < "red"

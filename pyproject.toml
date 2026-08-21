@@ -11,6 +11,23 @@ requires-python = ">=3.11"
 license = "MIT"
 authors = [{ name = "Mathias Paulenko", email = "mathias.paulenko@outlook.com" }]
 keywords = ["enum", "enumeration", "metadata", "serialization", "choices"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+
+[project.urls]
+Homepage = "https://pypi.org/project/enumplus/"
+Repository = "https://github.com/MathiasPaulenko/enumpy"
+Issues = "https://github.com/MathiasPaulenko/enumpy/issues"
 
 [project.optional-dependencies]
 dev = [
@@ -18,7 +35,6 @@ dev = [
     "ruff",
     "mypy",
     "pydantic",
-    "typing_extensions",
 ]
 
 [tool.ruff]

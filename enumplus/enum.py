@@ -1,19 +1,104 @@
 from __future__ import annotations
 
 import enum
-from typing import Any, cast
+import sys
+from typing import Any, Self, TypeVar, overload
 
-try:
-    from typing import dataclass_transform
-except ImportError:
-    from typing_extensions import dataclass_transform
+if sys.version_info >= (3, 13):
+    from enum import EnumDict
+else:
+    from enum import _EnumDict as EnumDict
+
+from typing import dataclass_transform
 
 _SENTINEL = object()
+_T = TypeVar("_T")
+
+
+class _EnumPlusDict(EnumDict):
+    """Namespace dict that unwraps per-member metadata and class config.
+
+    ``(value, metadata_dict)`` tuples are unpacked so the real value is used
+    for enum machinery (including ``auto()`` generation), while the metadata is
+    stored separately and attached to the created members.
+
+    Class config keys such as ``serialize_by_name`` are kept as normal class
+    attributes and are never registered as enum members, so they do not affect
+    ``auto()`` values or member order.
+    """
+
+    _CONFIG_KEYS = frozenset({"serialize_by_name"})
+
+    def __init__(self, cls_name: str | None = None) -> None:
+        super().__init__()
+        self._member_metadata: dict[str, dict[str, Any]] = {}
+        self._class_config: dict[str, Any] = {}
+        # In Python <3.13 _EnumDict.__init__ does not set _cls_name; in 3.13+
+        # it is set by super().__init__() but defaulting to None. Ensure it is
+        # always available for _is_private/_is_internal_class checks.
+        if cls_name is not None:
+            self._cls_name = cls_name
+
+    def __setitem__(self, key: str, value: Any) -> None:
+        if key in self._CONFIG_KEYS:
+            self._class_config[key] = value
+            # Store as a class attribute, but do not register as a member and
+            # do not affect _last_values used by auto().
+            dict.__setitem__(self, key, value)
+            return
+
+        if (
+            isinstance(value, tuple)
+            and len(value) == 2
+            and isinstance(value[1], dict)
+        ):
+            actual_value, metadata = value
+            self._member_metadata[key] = metadata
+            value = actual_value
+
+        super().__setitem__(key, value)
+
+
+def _safe_equal(a: Any, b: Any) -> bool:
+    """Return ``a == b`` as a bool, swallowing shape/length comparison errors."""
+    try:
+        result = a == b
+    except (TypeError, ValueError):
+        return False
+
+    if result is True or result is False:
+        return bool(result)
+
+    if result is NotImplemented:
+        return False
+
+    try:
+        return bool(result)
+    except (TypeError, ValueError):
+        return False
 
 
 @dataclass_transform()
 class EnumMeta(enum.EnumMeta):
     """Base metaclass for enumplus enums."""
+
+    @classmethod
+    def __prepare__(  # type: ignore[override]
+        metacls,
+        cls: str,
+        bases: tuple[type, ...],
+        **kwds: Any,
+    ) -> _EnumPlusDict:
+        # Reuse EnumType.__prepare__ for existing-member checks and inherited
+        # _generate_next_value_, then copy into our custom namespace.
+        base_ns = super().__prepare__(cls, bases, **kwds)
+        namespace = _EnumPlusDict(cls)
+        for key, value in base_ns.items():
+            namespace[key] = value
+        gnv = getattr(base_ns, "_generate_next_value", None)
+        if gnv is not None:
+            namespace._generate_next_value = gnv  # type: ignore[attr-defined]
+        return namespace
 
     def __new__(
         cls,
@@ -22,41 +107,33 @@ class EnumMeta(enum.EnumMeta):
         namespace: Any,
         **kwargs: Any,
     ) -> EnumMeta:
-        member_metadata: dict[str, dict[str, Any]] = {}
+        member_metadata: dict[str, dict[str, Any]]
+        class_config: dict[str, Any]
 
-        member_names: list[str] = list(getattr(namespace, "_member_names", []))
-        last_values: list[Any] = getattr(namespace, "_last_values", [])
-
-        class_config: dict[str, Any] = {}
-        _config_keys = {"serialize_by_name"}
-
-        ns_member_names = getattr(namespace, "_member_names", None)
-
-        for key in _config_keys:
-            if key in namespace:
-                class_config[key] = namespace[key]
-                dict.__delitem__(namespace, key)
-                if ns_member_names is not None and key in ns_member_names:
-                    if isinstance(ns_member_names, dict):
-                        del ns_member_names[key]
-                    else:
-                        ns_member_names.remove(key)
-
-        for key, value in list(namespace.items()):
-            if isinstance(value, tuple) and len(value) == 2 and isinstance(value[1], dict):
-                actual_value, metadata = value
-                member_metadata[key] = metadata
-                if key in member_names:
-                    idx = member_names.index(key)
-                    last_values[idx] = actual_value
-                dict.__setitem__(namespace, key, actual_value)
+        if isinstance(namespace, _EnumPlusDict):
+            member_metadata = namespace._member_metadata
+            class_config = namespace._class_config
+        else:
+            # Best-effort fallback for plain dicts/EnumDict not prepared by us.
+            member_metadata = {}
+            class_config = {}
+            for key, value in list(namespace.items()):
+                if (
+                    isinstance(value, tuple)
+                    and len(value) == 2
+                    and isinstance(value[1], dict)
+                ):
+                    actual_value, metadata = value
+                    member_metadata[key] = metadata
+                    if not isinstance(namespace, _EnumPlusDict):
+                        dict.__setitem__(namespace, key, actual_value)
 
         new_cls = super().__new__(cls, name, bases, namespace, **kwargs)
 
         for key, value in class_config.items():
             setattr(new_cls, key, value)
 
-        if not hasattr(new_cls, "serialize_by_name"):
+        if "serialize_by_name" not in class_config:
             new_cls.serialize_by_name = False
 
         members: list[Any] = list(new_cls)
@@ -74,16 +151,16 @@ class EnumMeta(enum.EnumMeta):
 
         return new_cls
 
-    serialize_by_name: bool = False
-
     def __contains__(cls, item: Any) -> bool:
         if isinstance(item, cls):
             return True
         member: Any
         for member in cls:
-            if member.value == item:
+            if _safe_equal(member.value, item):
                 return True
         return False
+
+    serialize_by_name: bool = False
 
 
 class Enum(enum.Enum, metaclass=EnumMeta):
@@ -123,37 +200,71 @@ class Enum(enum.Enum, metaclass=EnumMeta):
     def __eq__(self, other: object) -> bool:
         if isinstance(other, enum.Enum):
             return self is other
-        return bool(self.value == other)
+        return _safe_equal(self.value, other)
 
     def __hash__(self) -> int:
-        return hash(self.value)
+        try:
+            return hash(self.value)
+        except TypeError:
+            return id(self)
 
     @classmethod
     def choices(cls) -> list[tuple[Any, str]]:
         return [(member.value, member.label) for member in cls]
 
+    @overload
     @classmethod
     def from_value(
-        cls, value: Any, default: Any = _SENTINEL, *, case_insensitive: bool = False
-    ) -> Enum:
+        cls, value: Any, *, case_insensitive: bool = False
+    ) -> Self: ...
+
+    @overload
+    @classmethod
+    def from_value(
+        cls, value: Any, default: _T, *, case_insensitive: bool = False
+    ) -> Self | _T: ...
+
+    @classmethod
+    def from_value(
+        cls,
+        value: Any,
+        default: Any = _SENTINEL,
+        *,
+        case_insensitive: bool = False,
+    ) -> Any:
         member: Any
         if case_insensitive and isinstance(value, str):
             lowered = value.lower()
             for member in cls:
                 if isinstance(member.value, str) and member.value.lower() == lowered:
-                    return cast(Enum, member)
+                    return member
         else:
             for member in cls:
-                if member.value == value:
-                    return cast(Enum, member)
+                if _safe_equal(member.value, value):
+                    return member
         if default is not _SENTINEL:
-            return cast(Enum, default)
+            return default
         raise ValueError(f"{value!r} is not a valid {cls.__name__} value")
+
+    @overload
+    @classmethod
+    def from_name(cls, name: str, *, case_insensitive: bool = False) -> Self: ...
+
+    @overload
+    @classmethod
+    def from_name(cls, name: str, default: _T, *, case_insensitive: bool = False) -> Self | _T: ...
 
     @classmethod
     def from_name(
-        cls, name: str, default: Any = _SENTINEL, *, case_insensitive: bool = False
-    ) -> Enum:
+        cls,
+        name: str,
+        default: Any = _SENTINEL,
+        *,
+        case_insensitive: bool = False,
+    ) -> Any:
+        if not isinstance(name, str):
+            raise KeyError(f"{name!r} is not a valid {cls.__name__} name")
+
         if case_insensitive:
             upper = name.upper()
             for member in cls:
@@ -164,19 +275,18 @@ class Enum(enum.Enum, metaclass=EnumMeta):
             if found is not None:
                 return found
         if default is not _SENTINEL:
-            return cast(Enum, default)
+            return default
         raise KeyError(f"{name!r} is not a valid {cls.__name__} name")
 
     @classmethod
     def is_valid(cls, value: Any) -> bool:
-        member: Any
         for member in cls:
-            if member.value == value or member is value:
+            if member is value or _safe_equal(member.value, value):
                 return True
         return False
 
     @classmethod
-    def validate(cls, value: Any) -> Enum:
+    def validate(cls, value: Any) -> Self:
         return cls.from_value(value)
 
     @classmethod
@@ -195,26 +305,34 @@ class Enum(enum.Enum, metaclass=EnumMeta):
     def keys(cls) -> list[str]:
         return [member.name for member in cls]
 
+    @overload
     @classmethod
-    def get(cls, value: Any, default: Any = None) -> Enum | None:
+    def get(cls, value: Any) -> Self | None: ...
+
+    @overload
+    @classmethod
+    def get(cls, value: Any, default: _T) -> Self | _T: ...
+
+    @classmethod
+    def get(cls, value: Any, default: Any = None) -> Any:
         return cls.from_value(value, default=default)
 
     @classmethod
-    def get_initial(cls) -> Enum:
+    def get_initial(cls) -> Self:
         members = list(cls)
         if not members:
             raise ValueError(f"{cls.__name__} has no members")
         return members[0]
 
     @classmethod
-    def get_final(cls) -> Enum:
+    def get_final(cls) -> Self:
         members = list(cls)
         if not members:
             raise ValueError(f"{cls.__name__} has no members")
         return members[-1]
 
     @classmethod
-    def map(cls, mapping: dict[Enum, Any]) -> dict[str, Any]:
+    def map(cls, mapping: dict[Self, Any]) -> dict[str, Any]:
         result: dict[str, Any] = {}
         for member in cls:
             result[member.name] = mapping.get(member, None)
@@ -235,17 +353,16 @@ class Enum(enum.Enum, metaclass=EnumMeta):
         return result
 
     @classmethod
-    def filter(cls, **kwargs: Any) -> list[Enum]:
+    def filter(cls, **kwargs: Any) -> list[Self]:
         if not kwargs:
             return list(cls)
-        result: list[Enum] = []
-        member: Any
+        result: list[Self] = []
         for member in cls:
             if all(
-                key in member._metadata_ and member._metadata_[key] == value
+                key in member._metadata_ and _safe_equal(member._metadata_[key], value)
                 for key, value in kwargs.items()
             ):
-                result.append(cast(Enum, member))
+                result.append(member)
         return result
 
     @classmethod
@@ -270,22 +387,22 @@ class Enum(enum.Enum, metaclass=EnumMeta):
 class OrderedEnum(Enum):
     """Enum mixin with ordering based on declaration order."""
 
-    def __lt__(self, other: OrderedEnum) -> bool:
+    def __lt__(self, other: object) -> bool:
         if not isinstance(other, type(self)):
             return NotImplemented
         return self._index_ < other._index_
 
-    def __le__(self, other: OrderedEnum) -> bool:
+    def __le__(self, other: object) -> bool:
         if not isinstance(other, type(self)):
             return NotImplemented
         return self._index_ <= other._index_
 
-    def __gt__(self, other: OrderedEnum) -> bool:
+    def __gt__(self, other: object) -> bool:
         if not isinstance(other, type(self)):
             return NotImplemented
         return self._index_ > other._index_
 
-    def __ge__(self, other: OrderedEnum) -> bool:
+    def __ge__(self, other: object) -> bool:
         if not isinstance(other, type(self)):
             return NotImplemented
         return self._index_ >= other._index_

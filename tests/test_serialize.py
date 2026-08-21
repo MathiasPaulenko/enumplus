@@ -106,3 +106,19 @@ def test_encoder_non_enum_delegates() -> None:
 
     with pytest.raises(TypeError):
         json.dumps(Custom(), cls=SerializableEncoder)
+
+
+def test_from_json_non_object() -> None:
+    class Color(Enum):
+        RED = "red"
+
+    with pytest.raises(TypeError, match="JSON object"):
+        Color.from_json('["not", "an", "object"]')
+
+
+def test_from_json_non_string_input() -> None:
+    class Color(Enum):
+        RED = "red"
+
+    with pytest.raises(TypeError, match="JSON string"):
+        Color.from_json(123)  # type: ignore[arg-type]

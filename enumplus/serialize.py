@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any, cast
+from typing import Any
 
 from enumplus.enum import Enum
 
@@ -31,16 +31,23 @@ def to_json(cls: type[Enum]) -> str:
 
 
 def from_json(data: str) -> dict[str, Any]:
+    if not isinstance(data, str):
+        raise TypeError(
+            f"from_json expects a JSON string, got {type(data).__name__}"
+        )
     try:
-        return cast(dict[str, Any], json.loads(data))
+        result = json.loads(data)
     except json.JSONDecodeError as e:
         raise ValueError(f"Invalid JSON: {e}") from None
+    if not isinstance(result, dict):
+        raise TypeError(
+            f"from_json expects a JSON object, got {type(result).__name__}"
+        )
+    return result
 
 
 class SerializableEncoder(json.JSONEncoder):
     def default(self, obj: Any) -> Any:
-        from enumplus.enum import Enum
-
         if isinstance(obj, Enum):
             return obj.value
         return super().default(obj)
