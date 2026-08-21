@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from enumplus import Enum
 
 
@@ -284,6 +286,28 @@ class TestI18nLabels:
 
         data = json.loads(Color.to_json())
         assert data["members"][0]["label"] == "Rojo"
+
+    def test_non_label_callable_not_invoked_in_to_dict(self) -> None:
+        def callback() -> str:
+            return "called"
+
+        class Color(Enum):
+            RED = ("red", {"label": "Red", "callback": callback})
+
+        d = Color.to_dict()
+        assert d["RED"]["label"] == "Red"
+        assert callable(d["RED"]["metadata"]["callback"])
+        assert d["RED"]["metadata"]["callback"] is callback
+
+    def test_non_label_callable_not_invoked_in_to_json(self) -> None:
+        def callback() -> str:
+            return "called"
+
+        class Color(Enum):
+            RED = ("red", {"label": "Red", "callback": callback})
+
+        with pytest.raises(TypeError):
+            Color.to_json()
 
 
 class TestSerializeByName:

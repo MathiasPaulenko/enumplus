@@ -1,0 +1,13 @@
+fix: non-label callable metadata and from_name type validation
+
+- to_dict and to_json no longer invoke non-label callable metadata values.
+  Only the "label" key is evaluated as a callable; other callables are
+  preserved as-is. This prevents unexpected side effects when storing
+  function references or classes in metadata.
+- from_name now raises TypeError for non-string input instead of KeyError,
+  matching the type contract and making the error semantically correct.
+- Add regression tests for both fixes.
+
+Generated with [Devin](https://devin.ai)
+
+Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>

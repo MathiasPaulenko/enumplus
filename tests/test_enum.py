@@ -448,6 +448,30 @@ def test_from_name_default() -> None:
     assert Color.from_name("BLUE", default=None) is None
 
 
+def test_from_name_non_string_raises_type_error() -> None:
+    class Color(Enum):
+        RED = "red"
+
+    with pytest.raises(TypeError, match="expects a string"):
+        Color.from_name(123)  # type: ignore[call-overload]
+
+
+def test_from_name_none_raises_type_error() -> None:
+    class Color(Enum):
+        RED = "red"
+
+    with pytest.raises(TypeError, match="expects a string"):
+        Color.from_name(None)  # type: ignore[call-overload]
+
+
+def test_from_name_non_string_case_insensitive_raises_type_error() -> None:
+    class Color(Enum):
+        RED = "red"
+
+    with pytest.raises(TypeError, match="expects a string"):
+        Color.from_name(123, case_insensitive=True)  # type: ignore[call-overload]
+
+
 def test_is_valid_exists() -> None:
     class Color(Enum):
         RED = "red"

@@ -3,7 +3,7 @@
 ![PyPI](https://img.shields.io/pypi/v/enumplus)
 ![Python](https://img.shields.io/badge/python-3.11+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
-![Tests](https://img.shields.io/badge/tests-164%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-169%20passing-brightgreen)
 
 ## Why
 

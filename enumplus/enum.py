@@ -263,7 +263,9 @@ class Enum(enum.Enum, metaclass=EnumMeta):
         case_insensitive: bool = False,
     ) -> Any:
         if not isinstance(name, str):
-            raise KeyError(f"{name!r} is not a valid {cls.__name__} name")
+            raise TypeError(
+                f"from_name expects a string, got {type(name).__name__}"
+            )
 
         if case_insensitive:
             upper = name.upper()
@@ -346,7 +348,7 @@ class Enum(enum.Enum, metaclass=EnumMeta):
                 "value": member.value,
                 "label": member.label,
                 "metadata": {
-                    k: (v() if callable(v) else v)
+                    k: (v() if callable(v) and k == "label" else v)
                     for k, v in member._metadata_.items()
                 },
             }

@@ -6,8 +6,8 @@ from typing import Any
 from enumplus.enum import Enum
 
 
-def _serialize_value(value: Any) -> Any:
-    if callable(value):
+def _serialize_value(value: Any, *, evaluate_callable: bool = False) -> Any:
+    if evaluate_callable and callable(value):
         return value()
     return value
 
@@ -21,7 +21,8 @@ def to_json(cls: type[Enum]) -> str:
                 "value": member.value,
                 "label": member.label,
                 "metadata": {
-                    k: _serialize_value(v) for k, v in member._metadata_.items()
+                    k: _serialize_value(v, evaluate_callable=(k == "label"))
+                    for k, v in member._metadata_.items()
                 },
             }
             for member in cls
