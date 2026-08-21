@@ -369,8 +369,12 @@ class Color(Enum):
     RED = ("red", {"hex": "#FF0000"})
 
 # Type checkers recognize .hex as a valid attribute
-reveal_type(Color.RED.hex)  # str
+Color.RED.hex  # inferred as Any via __getattr__
 ```
+
+> **Note:** Type inference for metadata attributes depends on the type checker.
+> The `@dataclass_transform()` decorator provides the structural hint, but
+> runtime attribute access goes through `__getattr__`, which returns `Any`.
 
 ## Migration from stdlib
 
@@ -385,6 +389,10 @@ from enumplus import Enum
 ```
 
 All existing enum code continues to work — `Enum["RED"]`, `Enum("red")`, `list(Enum)`, `len(Enum)`, `@unique`, `auto()`, `isinstance` checks, everything.
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for a full history of changes.
 
 ## License
 

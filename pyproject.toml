@@ -9,6 +9,7 @@ description = "Enhanced Python enums with metadata, serialization, and choices"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
+license-files = ["LICENSE"]
 authors = [{ name = "Mathias Paulenko", email = "mathias.paulenko@outlook.com" }]
 keywords = ["enum", "enumeration", "metadata", "serialization", "choices"]
 classifiers = [
@@ -28,18 +29,23 @@ classifiers = [
 Homepage = "https://pypi.org/project/enumplus/"
 Repository = "https://github.com/MathiasPaulenko/enumpy"
 Issues = "https://github.com/MathiasPaulenko/enumpy/issues"
+Changelog = "https://github.com/MathiasPaulenko/enumpy/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 dev = [
-    "pytest",
-    "ruff",
-    "mypy",
-    "pydantic",
+    "pytest>=8.0",
+    "ruff>=0.6",
+    "mypy>=1.10",
+    "pydantic>=2.0",
+    "build>=1.2",
 ]
 
 [tool.ruff]
 target-version = "py311"
 line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "RUF"]
 
 [tool.mypy]
 strict = true

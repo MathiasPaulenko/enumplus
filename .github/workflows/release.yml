@@ -154,7 +154,7 @@ jobs:
           prerelease: false
 
   publish-pypi:
-    needs: build
+    needs: [build, github-release]
     runs-on: ubuntu-latest
     environment: pypi
     permissions:

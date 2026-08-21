@@ -26,9 +26,9 @@ Thank you for your interest in contributing to enumplus! This document describes
 2. Make your changes, keeping code style consistent with the existing codebase.
 3. Run the checks before committing:
    ```bash
-   ruff check enumplus tests
-   mypy enumplus
-   pytest
+   ruff check enumplus/ tests/
+   mypy --strict enumplus/ tests/
+   pytest --tb=short
    ```
 4. Commit using [conventional commits](https://www.conventionalcommits.org/):
    ```bash

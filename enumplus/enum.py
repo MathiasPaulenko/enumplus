@@ -2,14 +2,12 @@ from __future__ import annotations
 
 import enum
 import sys
-from typing import Any, Self, TypeVar, overload
+from typing import Any, Self, TypeVar, dataclass_transform, overload
 
 if sys.version_info >= (3, 13):
     from enum import EnumDict
 else:
     from enum import _EnumDict as EnumDict
-
-from typing import dataclass_transform
 
 _SENTINEL = object()
 _T = TypeVar("_T")
@@ -60,18 +58,17 @@ class _EnumPlusDict(EnumDict):
 
 
 def _safe_equal(a: Any, b: Any) -> bool:
-    """Return ``a == b`` as a bool, swallowing shape/length comparison errors."""
+    """Return ``a == b`` as a bool, swallowing shape/length comparison errors.
+
+    Handles values whose ``__eq__`` may raise (e.g. NumPy arrays with shape
+    mismatches) or return non-boolean objects (e.g. arrays, ``NotImplemented``).
+    """
     try:
         result = a == b
     except (TypeError, ValueError):
         return False
-
-    if result is True or result is False:
-        return bool(result)
-
     if result is NotImplemented:
         return False
-
     try:
         return bool(result)
     except (TypeError, ValueError):
@@ -164,7 +161,21 @@ class EnumMeta(enum.EnumMeta):
 
 
 class Enum(enum.Enum, metaclass=EnumMeta):
-    """Base enum class for enumplus."""
+    """Enhanced enum base class with labels, metadata, and serialization.
+
+    Drop-in replacement for ``enum.Enum`` that adds:
+
+    - Human-readable labels (``label`` property, ``str()``)
+    - Per-member metadata via ``(value, dict)`` tuple syntax
+    - Metadata attribute access (``Color.RED.hex``)
+    - Value-based equality (``Color.RED == "red"``)
+    - Lookup helpers (``from_value``, ``from_name``, ``get``)
+    - Validation helpers (``is_valid``, ``validate``)
+    - Collection helpers (``choices``, ``values``, ``names``, ``labels``)
+    - Filtering by metadata (``filter``)
+    - JSON serialization (``to_json``, ``from_json``)
+    - Pydantic v2 integration
+    """
 
     _label_: str
     _metadata_: dict[str, Any]
@@ -172,6 +183,11 @@ class Enum(enum.Enum, metaclass=EnumMeta):
 
     @property
     def label(self) -> str:
+        """Human-readable label for this member.
+
+        If the label was set to a callable, it is evaluated on every access.
+        Falls back to ``name.title()`` when no label is set.
+        """
         label = self._label_
         if callable(label):
             return str(label())
@@ -179,6 +195,7 @@ class Enum(enum.Enum, metaclass=EnumMeta):
 
     @property
     def metadata(self) -> dict[str, Any]:
+        """Metadata dictionary attached to this member."""
         return self._metadata_
 
     def __getattr__(self, name: str) -> Any:
@@ -210,6 +227,7 @@ class Enum(enum.Enum, metaclass=EnumMeta):
 
     @classmethod
     def choices(cls) -> list[tuple[Any, str]]:
+        """Return ``[(value, label), ...]`` for forms and dropdowns."""
         return [(member.value, member.label) for member in cls]
 
     @overload
@@ -232,6 +250,19 @@ class Enum(enum.Enum, metaclass=EnumMeta):
         *,
         case_insensitive: bool = False,
     ) -> Any:
+        """Look up a member by value.
+
+        Args:
+            value: The value to search for.
+            default: Returned if no match is found. If omitted, raises ``ValueError``.
+            case_insensitive: If ``True``, perform case-insensitive string comparison.
+
+        Returns:
+            The matching member, or ``default`` if provided and no match found.
+
+        Raises:
+            ValueError: If no match is found and no default is provided.
+        """
         member: Any
         if case_insensitive and isinstance(value, str):
             lowered = value.lower()
@@ -262,6 +293,20 @@ class Enum(enum.Enum, metaclass=EnumMeta):
         *,
         case_insensitive: bool = False,
     ) -> Any:
+        """Look up a member by name.
+
+        Args:
+            name: The member name to search for.
+            default: Returned if no match is found. If omitted, raises ``KeyError``.
+            case_insensitive: If ``True``, perform case-insensitive name comparison.
+
+        Returns:
+            The matching member, or ``default`` if provided and no match found.
+
+        Raises:
+            TypeError: If ``name`` is not a string.
+            KeyError: If no match is found and no default is provided.
+        """
         if not isinstance(name, str):
             raise TypeError(
                 f"from_name expects a string, got {type(name).__name__}"
@@ -282,6 +327,7 @@ class Enum(enum.Enum, metaclass=EnumMeta):
 
     @classmethod
     def is_valid(cls, value: Any) -> bool:
+        """Return ``True`` if ``value`` is a valid member or member value."""
         for member in cls:
             if member is value or _safe_equal(member.value, value):
                 return True
@@ -289,22 +335,31 @@ class Enum(enum.Enum, metaclass=EnumMeta):
 
     @classmethod
     def validate(cls, value: Any) -> Self:
+        """Validate ``value`` and return the matching member.
+
+        Raises:
+            ValueError: If ``value`` is not a valid member value.
+        """
         return cls.from_value(value)
 
     @classmethod
     def values(cls) -> list[Any]:
+        """Return a list of all member values in declaration order."""
         return [member.value for member in cls]
 
     @classmethod
     def names(cls) -> list[str]:
+        """Return a list of all member names in declaration order."""
         return [member.name for member in cls]
 
     @classmethod
     def labels(cls) -> list[str]:
+        """Return a list of all member labels in declaration order."""
         return [member.label for member in cls]
 
     @classmethod
     def keys(cls) -> list[str]:
+        """Alias for :meth:`names` for dict-like ergonomics."""
         return [member.name for member in cls]
 
     @overload
@@ -317,10 +372,16 @@ class Enum(enum.Enum, metaclass=EnumMeta):
 
     @classmethod
     def get(cls, value: Any, default: Any = None) -> Any:
+        """Dict-style lookup that returns ``default`` (``None``) instead of raising."""
         return cls.from_value(value, default=default)
 
     @classmethod
     def get_initial(cls) -> Self:
+        """Return the first member by declaration order.
+
+        Raises:
+            ValueError: If the enum has no members.
+        """
         members = list(cls)
         if not members:
             raise ValueError(f"{cls.__name__} has no members")
@@ -328,6 +389,11 @@ class Enum(enum.Enum, metaclass=EnumMeta):
 
     @classmethod
     def get_final(cls) -> Self:
+        """Return the last member by declaration order.
+
+        Raises:
+            ValueError: If the enum has no members.
+        """
         members = list(cls)
         if not members:
             raise ValueError(f"{cls.__name__} has no members")
@@ -335,6 +401,11 @@ class Enum(enum.Enum, metaclass=EnumMeta):
 
     @classmethod
     def map(cls, mapping: dict[Self, Any]) -> dict[str, Any]:
+        """Map each member to a value via ``mapping``.
+
+        Returns ``{name: mapped_value}`` for every member. Members not present
+        in ``mapping`` get ``None``.
+        """
         result: dict[str, Any] = {}
         for member in cls:
             result[member.name] = mapping.get(member, None)
@@ -342,6 +413,7 @@ class Enum(enum.Enum, metaclass=EnumMeta):
 
     @classmethod
     def to_dict(cls) -> dict[str, dict[str, Any]]:
+        """Serialize the enum to a nested dict with ``value``, ``label``, ``metadata``."""
         result: dict[str, dict[str, Any]] = {}
         for member in cls:
             result[member.name] = {
@@ -356,6 +428,10 @@ class Enum(enum.Enum, metaclass=EnumMeta):
 
     @classmethod
     def filter(cls, **kwargs: Any) -> list[Self]:
+        """Filter members by metadata key-value pairs (AND logic).
+
+        With no kwargs, returns all members.
+        """
         if not kwargs:
             return list(cls)
         result: list[Self] = []
@@ -369,12 +445,21 @@ class Enum(enum.Enum, metaclass=EnumMeta):
 
     @classmethod
     def to_json(cls) -> str:
+        """Serialize the enum class to a JSON string."""
         from enumplus.serialize import to_json
 
         return to_json(cls)
 
     @classmethod
     def from_json(cls, data: str) -> dict[str, Any]:
+        """Parse a JSON string into a dictionary.
+
+        Note: this returns the parsed dictionary, not a reconstructed enum class.
+
+        Raises:
+            TypeError: If ``data`` is not a string or the parsed JSON is not an object.
+            ValueError: If ``data`` is not valid JSON.
+        """
         from enumplus.serialize import from_json
 
         return from_json(data)
@@ -387,7 +472,11 @@ class Enum(enum.Enum, metaclass=EnumMeta):
 
 
 class OrderedEnum(Enum):
-    """Enum mixin with ordering based on declaration order."""
+    """Enum with ordering operators based on declaration order.
+
+    Supports ``<``, ``<=``, ``>``, ``>=`` between members of the same class.
+    Also works with ``sorted()``, ``min()``, and ``max()``.
+    """
 
     def __lt__(self, other: object) -> bool:
         if not isinstance(other, type(self)):

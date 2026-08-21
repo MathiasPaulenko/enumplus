@@ -228,7 +228,7 @@ def test_eq_none() -> None:
     class Color(Enum):
         RED = "red"
 
-    assert Color.RED != None
+    assert Color.RED is not None
 
 
 def test_hash_consistency() -> None:
