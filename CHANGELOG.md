@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `serialize_by_name` is now correctly inherited by subclass enums instead of being silently reset to `False`.
+
 ### Changed
 
 - Improved README with table of contents, requirements section, and dynamic CI badge.
