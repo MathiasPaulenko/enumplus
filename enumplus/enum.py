@@ -137,8 +137,9 @@ class EnumMeta(enum.EnumMeta):
         for key, value in class_config.items():
             setattr(new_cls, key, value)
 
-        if "serialize_by_name" not in class_config:
-            new_cls.serialize_by_name = False
+        # serialize_by_name defaults to False via the EnumMeta class attribute.
+        # If a parent enum set it, Python's normal MRO inheritance handles it.
+        # Only set the default if no parent has it in __dict__.
 
         members: list[Any] = list(new_cls)
         for index, member in enumerate(members):

@@ -326,3 +326,32 @@ class TestSerializeByName:
             serialize_by_name = True
 
         assert Color.serialize_by_name is True
+
+    def test_flag_inherited_from_empty_base(self) -> None:
+        class Base(Enum):
+            serialize_by_name = True
+
+        class Child(Base):  # type: ignore[misc]
+            A = 1
+            B = 2
+
+        assert Child.serialize_by_name is True
+
+    def test_flag_override_in_subclass(self) -> None:
+        class Base(Enum):
+            serialize_by_name = True
+
+        class Child(Base):  # type: ignore[misc]
+            serialize_by_name = False  # type: ignore[misc]
+            A = 1
+
+        assert Child.serialize_by_name is False
+
+    def test_flag_not_inherited_without_base(self) -> None:
+        class Base(Enum):
+            serialize_by_name = True
+
+        class Sibling(Enum):
+            A = 1
+
+        assert Sibling.serialize_by_name is False
