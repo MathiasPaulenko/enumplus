@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-08-23
+
 ### Fixed
 
 - `serialize_by_name` is now correctly inherited by subclass enums instead of being silently reset to `False`.
@@ -68,6 +70,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Pydantic v2 integration via `__get_pydantic_core_schema__`.
 - Full test suite, CI, and release workflows.
 
-[Unreleased]: https://github.com/MathiasPaulenko/enumpy/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/MathiasPaulenko/enumpy/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/MathiasPaulenko/enumpy/releases/tag/v1.2.0
 [1.1.0]: https://github.com/MathiasPaulenko/enumpy/releases/tag/v1.1.0
 [1.0.0]: https://github.com/MathiasPaulenko/enumpy/releases/tag/v1.0.0
