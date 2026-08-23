@@ -58,20 +58,21 @@ class _EnumPlusDict(EnumDict):
 
 
 def _safe_equal(a: Any, b: Any) -> bool:
-    """Return ``a == b`` as a bool, swallowing shape/length comparison errors.
+    """Return ``a == b`` as a bool, swallowing comparison errors.
 
     Handles values whose ``__eq__`` may raise (e.g. NumPy arrays with shape
-    mismatches) or return non-boolean objects (e.g. arrays, ``NotImplemented``).
+    mismatches, custom objects with side-effecting ``__eq__``) or return
+    non-boolean objects (e.g. arrays, ``NotImplemented``).
     """
     try:
         result = a == b
-    except (TypeError, ValueError):
+    except Exception:
         return False
     if result is NotImplemented:
         return False
     try:
         return bool(result)
-    except (TypeError, ValueError):
+    except Exception:
         return False
 
 
@@ -147,7 +148,7 @@ class EnumMeta(enum.EnumMeta):
             member._metadata_ = metadata
 
             label = metadata.get("label")
-            if not label:
+            if label is None:
                 member._label_ = member.name.title()
             else:
                 member._label_ = label
@@ -160,6 +161,13 @@ class EnumMeta(enum.EnumMeta):
         if isinstance(item, cls):
             return True
         member: Any
+        if isinstance(item, enum.Enum):
+            # Foreign enum member: only match if a member's value IS this
+            # exact enum member (identity), not just equal by value.
+            for member in cls:
+                if member.value is item:
+                    return True
+            return False
         for member in cls:
             if _safe_equal(member.value, item):
                 return True
@@ -185,7 +193,7 @@ class Enum(enum.Enum, metaclass=EnumMeta):
     - Pydantic v2 integration
     """
 
-    _label_: str
+    _label_: Any
     _metadata_: dict[str, Any]
     _index_: int
 
@@ -272,6 +280,16 @@ class Enum(enum.Enum, metaclass=EnumMeta):
             ValueError: If no match is found and no default is provided.
         """
         member: Any
+        if isinstance(value, enum.Enum) and not isinstance(value, cls):
+            # Foreign enum member: only match if a member's value IS this
+            # exact enum member (identity), not just equal by value.
+            for member in cls:
+                if member.value is value:
+                    return member
+            if default is not _SENTINEL:
+                return default
+            raise ValueError(f"{value!r} is not a valid {cls.__name__} value")
+
         if case_insensitive and isinstance(value, str):
             lowered = value.lower()
             for member in cls:
@@ -336,6 +354,13 @@ class Enum(enum.Enum, metaclass=EnumMeta):
     @classmethod
     def is_valid(cls, value: Any) -> bool:
         """Return ``True`` if ``value`` is a valid member or member value."""
+        if isinstance(value, enum.Enum) and not isinstance(value, cls):
+            # Foreign enum member: only match if a member's value IS this
+            # exact enum member (identity), not just equal by value.
+            for member in cls:
+                if member.value is value:
+                    return True
+            return False
         for member in cls:
             if member is value or _safe_equal(member.value, value):
                 return True
@@ -424,13 +449,17 @@ class Enum(enum.Enum, metaclass=EnumMeta):
         """Serialize the enum to a nested dict with ``value``, ``label``, ``metadata``."""
         result: dict[str, dict[str, Any]] = {}
         for member in cls:
+            label = member.label
+            metadata: dict[str, Any] = {}
+            for k, v in member._metadata_.items():
+                if k == "label" and callable(v):
+                    metadata[k] = label
+                else:
+                    metadata[k] = v
             result[member.name] = {
                 "value": member.value,
-                "label": member.label,
-                "metadata": {
-                    k: (v() if callable(v) and k == "label" else v)
-                    for k, v in member._metadata_.items()
-                },
+                "label": label,
+                "metadata": metadata,
             }
         return result
 

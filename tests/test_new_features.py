@@ -309,6 +309,41 @@ class TestI18nLabels:
         with pytest.raises(TypeError):
             Color.to_json()
 
+    def test_callable_label_evaluated_once_in_to_dict(self) -> None:
+        call_count = 0
+
+        def make_label() -> str:
+            nonlocal call_count
+            call_count += 1
+            return "Rojo"
+
+        class Color(Enum):
+            RED = ("red", {"label": make_label})
+
+        Color.to_dict()
+        assert call_count == 1
+
+    def test_callable_label_evaluated_once_in_to_json(self) -> None:
+        call_count = 0
+
+        def make_label() -> str:
+            nonlocal call_count
+            call_count += 1
+            return "Rojo"
+
+        class Color(Enum):
+            RED = ("red", {"label": make_label})
+
+        Color.to_json()
+        assert call_count == 1
+
+    def test_callable_label_metadata_matches_top_level_in_to_dict(self) -> None:
+        class Color(Enum):
+            RED = ("red", {"label": lambda: "Rojo"})
+
+        d = Color.to_dict()
+        assert d["RED"]["label"] == d["RED"]["metadata"]["label"]
+
 
 class TestSerializeByName:
     def test_flag_default_false(self) -> None:

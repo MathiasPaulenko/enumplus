@@ -77,11 +77,11 @@ def test_label_none_falls_back() -> None:
     assert Color.RED.label == "Red"
 
 
-def test_label_empty_falls_back() -> None:
+def test_label_empty_string_respected() -> None:
     class Color(Enum):
         RED = ("red", {"label": ""})
 
-    assert Color.RED.label == "Red"
+    assert Color.RED.label == ""
 
 
 def test_label_with_spaces() -> None:

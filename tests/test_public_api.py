@@ -15,4 +15,6 @@ def test_all_exports() -> None:
 
 
 def test_version() -> None:
-    assert enumplus.__version__ == "1.1.0"
+    from importlib.metadata import version
+
+    assert enumplus.__version__ == version("enumplus")

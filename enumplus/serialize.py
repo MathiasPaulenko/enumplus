@@ -8,18 +8,6 @@ from enumplus.enum import Enum
 __all__ = ["SerializableEncoder", "from_json", "to_json"]
 
 
-def _serialize_value(value: Any, *, evaluate_callable: bool = False) -> Any:
-    """Serialize a single metadata value.
-
-    Only callables in the ``label`` key are evaluated; all other values are
-    returned as-is so that function references or class objects stored in
-    metadata are not accidentally invoked.
-    """
-    if evaluate_callable and callable(value):
-        return value()
-    return value
-
-
 def to_json(cls: type[Enum]) -> str:
     """Serialize an enum class to a pretty-printed JSON string.
 
@@ -32,22 +20,26 @@ def to_json(cls: type[Enum]) -> str:
           ]
         }
     """
+    members: list[dict[str, Any]] = []
+    for member in cls:
+        label = member.label
+        metadata: dict[str, Any] = {}
+        for k, v in member._metadata_.items():
+            if k == "label" and callable(v):
+                metadata[k] = label
+            else:
+                metadata[k] = v
+        members.append({
+            "name": member.name,
+            "value": member.value,
+            "label": label,
+            "metadata": metadata,
+        })
     data: dict[str, Any] = {
         "name": cls.__name__,
-        "members": [
-            {
-                "name": member.name,
-                "value": member.value,
-                "label": member.label,
-                "metadata": {
-                    k: _serialize_value(v, evaluate_callable=(k == "label"))
-                    for k, v in member._metadata_.items()
-                },
-            }
-            for member in cls
-        ],
+        "members": members,
     }
-    return json.dumps(data, ensure_ascii=False, indent=2)
+    return json.dumps(data, ensure_ascii=False, indent=2, cls=SerializableEncoder)
 
 
 def from_json(data: str) -> dict[str, Any]:

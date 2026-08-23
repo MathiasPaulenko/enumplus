@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-08-23
+
+### Fixed
+
+- `to_dict()` and `to_json()` no longer double-evaluate callable labels — the callable is invoked exactly once and the result is reused in both the top-level `label` field and the `metadata` dict.
+- `__version__` is now loaded dynamically from package metadata via `importlib.metadata`, eliminating version mismatch between `__init__.py` and `pyproject.toml`.
+- `__contains__`, `from_value()`, `is_valid()`, and `get()` no longer produce false positives when passed a foreign enum member with the same value as a member of the queried enum.
+- `__contains__`, `from_value()`, `is_valid()`, and `get()` now correctly handle members whose value is an enum member from another class. Previously, the foreign-enum guard rejected all foreign enum members, making it impossible to look up such members by value.
+- `to_json()` now uses `SerializableEncoder` internally, so members whose value (or metadata) is an enum member from another class are serialized correctly instead of raising `TypeError`.
+- `_safe_equal()` now catches all exceptions (not just `TypeError` and `ValueError`) from custom `__eq__` implementations, preventing crashes when comparing with objects that raise unexpected exceptions.
+- Falsy but valid labels (`0`, `""`, `False`) are now respected instead of being silently replaced by `name.title()`. Only `None` and missing labels trigger the fallback.
+- Removed dead `_serialize_value` function from `serialize.py`.
+- Updated `SECURITY.md` to include `1.2.x` in supported versions.
+
 ## [1.2.0] - 2026-08-23
 
 ### Fixed
@@ -70,7 +84,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Pydantic v2 integration via `__get_pydantic_core_schema__`.
 - Full test suite, CI, and release workflows.
 
-[Unreleased]: https://github.com/MathiasPaulenko/enumpy/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/MathiasPaulenko/enumpy/compare/v1.2.1...HEAD
+[1.2.1]: https://github.com/MathiasPaulenko/enumpy/releases/tag/v1.2.1
 [1.2.0]: https://github.com/MathiasPaulenko/enumpy/releases/tag/v1.2.0
 [1.1.0]: https://github.com/MathiasPaulenko/enumpy/releases/tag/v1.1.0
 [1.0.0]: https://github.com/MathiasPaulenko/enumpy/releases/tag/v1.0.0
