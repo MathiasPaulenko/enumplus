@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.2] - 2026-10-06
+
 ### Fixed
 
 - `from_value()`, `get()`, and `validate()` now return the member itself when
@@ -108,7 +110,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Pydantic v2 integration via `__get_pydantic_core_schema__`.
 - Full test suite, CI, and release workflows.
 
-[Unreleased]: https://github.com/MathiasPaulenko/enumplus/compare/v1.2.1...HEAD
+[Unreleased]: https://github.com/MathiasPaulenko/enumplus/compare/v1.2.2...HEAD
+[1.2.2]: https://github.com/MathiasPaulenko/enumplus/releases/tag/v1.2.2
 [1.2.1]: https://github.com/MathiasPaulenko/enumplus/releases/tag/v1.2.1
 [1.2.0]: https://github.com/MathiasPaulenko/enumplus/releases/tag/v1.2.0
 [1.1.0]: https://github.com/MathiasPaulenko/enumplus/releases/tag/v1.1.0
