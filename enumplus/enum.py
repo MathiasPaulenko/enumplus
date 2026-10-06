@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import enum
 import sys
+from types import NotImplementedType
 from typing import Any, Self, TypeVar, dataclass_transform, overload
 
 if sys.version_info >= (3, 13):
@@ -528,22 +529,22 @@ class OrderedEnum(Enum):
     Also works with ``sorted()``, ``min()``, and ``max()``.
     """
 
-    def __lt__(self, other: object) -> bool:
+    def __lt__(self, other: object) -> bool | NotImplementedType:
         if not isinstance(other, type(self)):
             return NotImplemented
         return self._index_ < other._index_
 
-    def __le__(self, other: object) -> bool:
+    def __le__(self, other: object) -> bool | NotImplementedType:
         if not isinstance(other, type(self)):
             return NotImplemented
         return self._index_ <= other._index_
 
-    def __gt__(self, other: object) -> bool:
+    def __gt__(self, other: object) -> bool | NotImplementedType:
         if not isinstance(other, type(self)):
             return NotImplemented
         return self._index_ > other._index_
 
-    def __ge__(self, other: object) -> bool:
+    def __ge__(self, other: object) -> bool | NotImplementedType:
         if not isinstance(other, type(self)):
             return NotImplemented
         return self._index_ >= other._index_
