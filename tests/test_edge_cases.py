@@ -1361,3 +1361,84 @@ def test_to_json_with_nested_enum_member_as_value() -> None:
     data = json.loads(Outer.to_json())
     # Middle.A.value is Innermost.Z, which serializes to "z"
     assert data["members"][0]["value"] == "z"
+
+
+# ---------- Own member lookup when value is a foreign enum member ----------
+
+
+def test_from_value_own_member_with_enum_value() -> None:
+    class Inner(Enum):
+        X = "x"
+
+    class Outer(Enum):
+        A = Inner.X
+
+    assert Outer.from_value(Outer.A) is Outer.A
+
+
+def test_get_own_member_with_enum_value() -> None:
+    class Inner(Enum):
+        X = "x"
+
+    class Outer(Enum):
+        A = Inner.X
+
+    assert Outer.get(Outer.A) is Outer.A
+
+
+def test_validate_own_member_with_enum_value() -> None:
+    class Inner(Enum):
+        X = "x"
+
+    class Outer(Enum):
+        A = Inner.X
+
+    assert Outer.validate(Outer.A) is Outer.A
+
+
+# ---------- Subclass member vs empty base consistency ----------
+
+
+def test_empty_base_is_valid_accepts_subclass_member() -> None:
+    class Base(Enum):
+        pass
+
+    class Child(Base):
+        A = 1
+
+    # Child.A in Base is True (isinstance), so is_valid/from_value must agree
+    assert Child.A in Base
+    assert Base.is_valid(Child.A) is True
+    assert Base.from_value(Child.A) is Child.A
+
+
+# ---------- SerializableEncoder with stdlib enum members ----------
+
+
+def test_encoder_stdlib_enum_member() -> None:
+    class Std(enum.Enum):
+        X = "x"
+
+    assert json.dumps(Std.X, cls=SerializableEncoder) == '"x"'
+
+
+def test_to_json_with_stdlib_enum_member_as_value() -> None:
+    class Std(enum.Enum):
+        X = "x"
+
+    class Outer(Enum):
+        A = Std.X
+
+    data = json.loads(Outer.to_json())
+    assert data["members"][0]["value"] == "x"
+
+
+def test_to_json_with_stdlib_enum_member_in_metadata() -> None:
+    class Std(enum.Enum):
+        X = "x"
+
+    class Outer(Enum):
+        A = ("a", {"ref": Std.X})
+
+    data = json.loads(Outer.to_json())
+    assert data["members"][0]["metadata"]["ref"] == "x"

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import enum
 import json
 from typing import Any
 
@@ -65,7 +66,9 @@ def from_json(data: str) -> dict[str, Any]:
 
 
 class SerializableEncoder(json.JSONEncoder):
-    """JSON encoder that serializes enumplus members to their values.
+    """JSON encoder that serializes enum members to their values.
+
+    Handles both enumplus members and stdlib ``enum.Enum`` members.
 
     Usage::
 
@@ -73,6 +76,6 @@ class SerializableEncoder(json.JSONEncoder):
     """
 
     def default(self, obj: Any) -> Any:
-        if isinstance(obj, Enum):
+        if isinstance(obj, enum.Enum):
             return obj.value
         return super().default(obj)

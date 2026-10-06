@@ -280,7 +280,9 @@ class Enum(enum.Enum, metaclass=EnumMeta):
             ValueError: If no match is found and no default is provided.
         """
         member: Any
-        if isinstance(value, enum.Enum) and not isinstance(value, cls):
+        if isinstance(value, cls):
+            return value
+        if isinstance(value, enum.Enum):
             # Foreign enum member: only match if a member's value IS this
             # exact enum member (identity), not just equal by value.
             for member in cls:
@@ -354,7 +356,9 @@ class Enum(enum.Enum, metaclass=EnumMeta):
     @classmethod
     def is_valid(cls, value: Any) -> bool:
         """Return ``True`` if ``value`` is a valid member or member value."""
-        if isinstance(value, enum.Enum) and not isinstance(value, cls):
+        if isinstance(value, cls):
+            return True
+        if isinstance(value, enum.Enum):
             # Foreign enum member: only match if a member's value IS this
             # exact enum member (identity), not just equal by value.
             for member in cls:

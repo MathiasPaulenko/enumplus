@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 import enumplus
 
 
@@ -15,6 +17,10 @@ def test_all_exports() -> None:
 
 
 def test_version() -> None:
-    from importlib.metadata import version
+    from importlib.metadata import PackageNotFoundError, version
 
-    assert enumplus.__version__ == version("enumplus")
+    try:
+        expected = version("enumplus")
+    except PackageNotFoundError:
+        pytest.skip("enumplus is not installed")
+    assert enumplus.__version__ == expected
