@@ -92,12 +92,12 @@ print("red" in Color)           # True
 
 ### Display Names (label)
 
-Every member gets a human-readable label, auto-generated from the member name or set explicitly via metadata.
+Every member gets a human-readable label, auto-generated from the member name or set explicitly via metadata. Auto-generated labels replace underscores with spaces (`IN_PROGRESS` becomes `"In Progress"`).
 
 ```python
 class Status(Enum):
-    PENDING = "pending"                              # label: "Pending"
-    IN_PROGRESS = ("in_progress", {"label": "In Progress"})
+    PENDING = "pending"         # label: "Pending"
+    IN_PROGRESS = "in_progress" # label: "In Progress"
 
 print(Status.PENDING.label)       # "Pending"
 print(Status.IN_PROGRESS.label)   # "In Progress"
@@ -187,7 +187,7 @@ Color.keys()     # ["RED", "GREEN"]
 
 ### filter()
 
-Filter members by metadata key-value pairs (AND logic).
+Filter members by metadata key-value pairs (AND logic). `label` is special: it matches against the evaluated label (including auto-generated and callable labels), not the raw metadata dict.
 
 ```python
 class Color(Enum):
@@ -197,6 +197,7 @@ class Color(Enum):
 Color.filter(category="warm")              # [Color.RED]
 Color.filter(hex="#FF0000", category="warm")  # [Color.RED]
 Color.filter()                             # [Color.RED, Color.GREEN]
+Color.filter(label="Red")                  # [Color.RED]
 ```
 
 ### Comparison with values (==)
@@ -400,7 +401,7 @@ print(Color.labels())      # ["Rojo", "Verde"]
 print(Color.choices())     # [("red", "Rojo"), ("green", "Verde")]
 ```
 
-Callable labels work everywhere: `choices()`, `to_dict()`, `to_json()`, `labels()`, and `str()`.
+Callable labels work everywhere: `choices()`, `to_dict()`, `to_json()`, `labels()`, `filter(label=...)`, and `str()`.
 
 ### Type hints in metadata
 
@@ -431,6 +432,17 @@ from enumplus import Enum
 ```
 
 All existing enum code continues to work — `Enum["RED"]`, `Enum("red")`, `list(Enum)`, `len(Enum)`, `@unique`, `auto()`, `isinstance` checks, everything.
+
+A few deliberate differences from `enum.Enum` to keep in mind:
+
+- `str(member)` returns the label, not `"ClassName.MEMBER"` (`repr()` shows
+  `<ClassName.MEMBER: value>`), and `member == value` compares by value.
+- `serialize_by_name` is a reserved class attribute for Pydantic config — it
+  can't be used as a member name and must be a `bool`.
+- Metadata keys that collide with real attributes (`name`, `value`, `label`,
+  `metadata`) are only reachable via `member.metadata`, not as attributes.
+- Metadata declared on an alias is ignored — an alias shares the canonical
+  member's label and metadata.
 
 ## Changelog
 

@@ -22,6 +22,10 @@ Requires Python `>=3.11`.
   - Keep class config keys such as `serialize_by_name` from becoming enum members
     or affecting `auto()` generation.
   - Support `auto()` following a metadata tuple on Python 3.11–3.14.
+- `serialize_by_name` is a reserved class config key: it must be a `bool`
+  (`TypeError` otherwise) and can never be a member name.
+- Auto-generated labels use `name.replace("_", " ").title()`. `filter(label=...)`
+  matches the evaluated label, not the raw metadata dict.
 - `Enum.__eq__` and `EnumMeta.__contains__` use `_safe_equal`, which coerces
   `a == b` to a `bool` without raising on shape/length mismatches (e.g. NumPy
   arrays, unhashable container values).

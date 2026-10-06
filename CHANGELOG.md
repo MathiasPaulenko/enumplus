@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `from_value()`, `get()`, and `validate()` now return the member itself when
+  passed a member of the queried enum whose value is a foreign enum member.
+  Previously they raised `ValueError` (or returned the default) even though
+  `is_valid()` and `in` correctly accepted the member.
+- `is_valid()` and `from_value()` now accept members of subclass enums, matching
+  the behavior of `in` (e.g. `Base.is_valid(Child.MEMBER)` is `True` for an
+  empty `Base`).
+- `SerializableEncoder` now also serializes stdlib `enum.Enum` members, not just
+  enumplus members. `to_json()` and `json.dumps()` no longer raise `TypeError`
+  when a member's value or metadata is a stdlib enum member.
+
+### Changed
+
+- Auto-generated labels now replace underscores with spaces: `IN_PROGRESS`
+  produces `"In Progress"` instead of `"In_Progress"`.
+- `filter(label=...)` now matches against the member's evaluated label, so
+  callable and auto-generated labels can be filtered.
+- `serialize_by_name` now raises `TypeError` when set to a non-`bool` value
+  instead of being silently swallowed as a member assignment.
+- `OrderedEnum` comparison operators are now typed as returning
+  `bool | NotImplementedType`.
+
 ## [1.2.1] - 2026-08-23
 
 ### Fixed
