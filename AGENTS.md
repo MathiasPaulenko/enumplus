@@ -71,7 +71,7 @@ py -3.11 -m mypy --strict enumplus/ tests/
 
 ## Known constraints
 
-- The git remote is `MathiasPaulenko/enumpy`, while the package name and PyPI
-  project are `enumplus`. Package URLs in `pyproject.toml` point to the actual
-  remote repository; update if the repository is renamed.
+- The repository was renamed from `enumpy` to `enumplus` on GitHub. All
+  project URLs point to `MathiasPaulenko/enumplus`; old `enumpy` links
+  redirect automatically.
 - `ref/` is intentionally ignored (local reference material). Do not commit it.

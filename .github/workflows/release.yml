@@ -96,7 +96,6 @@ jobs:
           DOCS=$(git log --pretty=format:"- %s" ${RANGE} --grep="^docs" --grep="^readme" -i || true)
           TESTS=$(git log --pretty=format:"- %s" ${RANGE} --grep="^test" -i || true)
           CHORE=$(git log --pretty=format:"- %s" ${RANGE} --grep="^chore" --grep="^ci" --grep="^build" -i || true)
-          RELEASE=$(git log --pretty=format:"- %s" ${RANGE} --grep="^release" -i || true)
 
           {
             echo "body<<EOF"

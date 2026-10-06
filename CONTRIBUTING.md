@@ -7,8 +7,8 @@ Thank you for your interest in contributing to enumplus! This document describes
 1. Fork the repository on GitHub.
 2. Clone your fork locally:
    ```bash
-   git clone https://github.com/<your-username>/enumpy.git
-   cd enumpy
+   git clone https://github.com/<your-username>/enumplus.git
+   cd enumplus
    ```
 3. Create a virtual environment and install dev dependencies:
    ```bash
@@ -17,7 +17,7 @@ Thank you for your interest in contributing to enumplus! This document describes
    pip install -e ".[dev]"
    ```
 
-> **Note:** The git repository is named `enumpy`, while the package name is `enumplus`. This is expected — the repository name predates the package rename.
+> **Note:** The repository was previously named `enumpy`; it has been renamed to `enumplus` to match the package name. Old links redirect automatically.
 
 ## Development Workflow
 
@@ -73,7 +73,7 @@ py -3.11 -m mypy --strict enumplus/ tests/
 
 ## Reporting Issues
 
-- Use [GitHub Issues](https://github.com/MathiasPaulenko/enumpy/issues) to report bugs or request features.
+- Use [GitHub Issues](https://github.com/MathiasPaulenko/enumplus/issues) to report bugs or request features.
 - Use the provided issue templates for consistency.
 
 ## Code of Conduct

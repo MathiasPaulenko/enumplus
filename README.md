@@ -3,7 +3,7 @@
 ![PyPI](https://img.shields.io/pypi/v/enumplus)
 ![Python](https://img.shields.io/badge/python-3.11+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
-![Tests](https://github.com/MathiasPaulenko/enumpy/actions/workflows/ci.yml/badge.svg)
+![Tests](https://github.com/MathiasPaulenko/enumplus/actions/workflows/ci.yml/badge.svg)
 
 Python's `enum.Enum` is basic. `enumplus` adds display names, metadata, JSON
 serialization, `choices()`, and value-based comparison — all with zero runtime
