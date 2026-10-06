@@ -39,6 +39,11 @@ class _EnumPlusDict(EnumDict):
 
     def __setitem__(self, key: str, value: Any) -> None:
         if key in self._CONFIG_KEYS:
+            if not isinstance(value, bool):
+                raise TypeError(
+                    f"{key} is a reserved class config key and must be a bool, "
+                    f"got {type(value).__name__}"
+                )
             self._class_config[key] = value
             # Store as a class attribute, but do not register as a member and
             # do not affect _last_values used by auto().
@@ -149,7 +154,7 @@ class EnumMeta(enum.EnumMeta):
 
             label = metadata.get("label")
             if label is None:
-                member._label_ = member.name.title()
+                member._label_ = member.name.replace("_", " ").title()
             else:
                 member._label_ = label
 
@@ -202,7 +207,7 @@ class Enum(enum.Enum, metaclass=EnumMeta):
         """Human-readable label for this member.
 
         If the label was set to a callable, it is evaluated on every access.
-        Falls back to ``name.title()`` when no label is set.
+        Falls back to ``name.replace("_", " ").title()`` when no label is set.
         """
         label = self._label_
         if callable(label):
@@ -471,14 +476,18 @@ class Enum(enum.Enum, metaclass=EnumMeta):
     def filter(cls, **kwargs: Any) -> list[Self]:
         """Filter members by metadata key-value pairs (AND logic).
 
-        With no kwargs, returns all members.
+        ``label`` is matched against the member's evaluated label, so callable
+        labels work too. With no kwargs, returns all members.
         """
         if not kwargs:
             return list(cls)
         result: list[Self] = []
         for member in cls:
             if all(
-                key in member._metadata_ and _safe_equal(member._metadata_[key], value)
+                _safe_equal(member.label, value)
+                if key == "label"
+                else key in member._metadata_
+                and _safe_equal(member._metadata_[key], value)
                 for key, value in kwargs.items()
             ):
                 result.append(member)

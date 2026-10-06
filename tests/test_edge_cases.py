@@ -2,7 +2,9 @@
 
 Covers: pickle, copy, bool/int equivalence, NaN, Unicode, aliases,
 _ignore_, custom _generate_next_value_, subclassing, __getattr__,
-SerializableEncoder with None, empty/whitespace values, bytes values.
+SerializableEncoder with None and stdlib enums, empty/whitespace values,
+bytes values, foreign enum members as values, serialize_by_name validation,
+and filter() matching on evaluated labels.
 """
 from __future__ import annotations
 
@@ -1442,3 +1444,51 @@ def test_to_json_with_stdlib_enum_member_in_metadata() -> None:
 
     data = json.loads(Outer.to_json())
     assert data["members"][0]["metadata"]["ref"] == "x"
+
+
+# ---------- serialize_by_name config validation ----------
+
+
+def test_serialize_by_name_non_bool_raises() -> None:
+    with pytest.raises(TypeError, match="must be a bool"):
+
+        class C(Enum):
+            serialize_by_name = "yes"
+            A = 1
+
+
+def test_serialize_by_name_member_name_is_reserved() -> None:
+    with pytest.raises(TypeError, match="must be a bool"):
+
+        class C(Enum):
+            serialize_by_name = 5
+            A = 1
+
+
+# ---------- filter() matches evaluated label ----------
+
+
+def test_filter_by_auto_label() -> None:
+    class C(Enum):
+        IN_PROGRESS = "ip"
+        DONE = "done"
+
+    assert C.filter(label="In Progress") == [C.IN_PROGRESS]
+
+
+def test_filter_by_callable_label() -> None:
+    class C(Enum):
+        A = ("a", {"label": lambda: "X"})
+        B = "b"
+
+    assert C.filter(label="X") == [C.A]
+
+
+def test_filter_by_explicit_label() -> None:
+    class C(Enum):
+        A = ("a", {"label": "Alpha", "kind": "k"})
+        B = ("b", {"label": "Beta"})
+
+    assert C.filter(label="Alpha") == [C.A]
+    assert C.filter(label="Alpha", kind="k") == [C.A]
+    assert C.filter(label="Alpha", kind="other") == []

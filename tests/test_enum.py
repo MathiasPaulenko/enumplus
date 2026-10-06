@@ -95,7 +95,7 @@ def test_label_underscore_without_label() -> None:
     class Status(Enum):
         IN_PROGRESS = "in_progress"
 
-    assert Status.IN_PROGRESS.label == "In_Progress"
+    assert Status.IN_PROGRESS.label == "In Progress"
 
 
 def test_metadata_by_attribute() -> None:
