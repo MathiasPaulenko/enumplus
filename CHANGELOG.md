@@ -5,7 +5,42 @@ All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.2.3] - 2026-11-18
+
+### Fixed
+
+- `label`, `metadata`, and metadata attributes are now readable inside a
+  member's `__init__`. stdlib runs `__init__` during class creation, before
+  `EnumMeta.__new__` could attach `_metadata_`; metadata is now resolved
+  through a pending map while the class is being built.
+- Members created via `enum._simple_enum` no longer raise `AttributeError` on
+  `label`, `metadata`, metadata attributes, `filter()`, `to_dict()`,
+  `to_json()`, or `OrderedEnum` comparisons. They fall back to auto-generated
+  labels, empty metadata, and the stdlib `_sort_order_` for ordering.
+- Member values that are tuple subclasses (e.g. `NamedTuple` instances) are no
+  longer mistaken for `(value, metadata)` tuples and unwrapped. Only plain
+  `tuple` values are treated as metadata declarations.
+- `member == other` now returns `True` when `other` is this member's value
+  object or wraps it as its value, symmetrically in both directions. Equality
+  and hashing stay consistent: `Outer.A == Inner.X` now agrees with
+  `Outer.A == "x"` when `Outer.A.value is Inner.X`.
+- `cls(value)` lookup now delegates misses to a `_missing_` hook that uses the
+  same safe equality as `from_value()`, so call-style lookup and
+  `from_value()` agree. Classes mixing in `enum.Flag`/`enum.IntFlag` keep the
+  stdlib lookup, so composite values (`F.A | F.B`) and `boundary=` handling
+  still work.
+- `in`, `from_value()`, and `is_valid()` now also match a foreign enum member
+  whose own value is a member of the queried enum (e.g. `Outer.A in Inner`
+  when `Outer.A.value is Inner.X`), consistent with member equality.
+- `map()` raises `TypeError` for non-mapping arguments instead of
+  `AttributeError`.
+
+### Changed
+
+- Removed `@dataclass_transform()` from the metaclass. It made type checkers
+  require `_metadata_`/`_index_` constructor arguments on calls like
+  `Color("red")`. Metadata attribute access still resolves through
+  `__getattr__` and is typed as `Any`.
 
 ## [1.2.2] - 2026-10-06
 
@@ -110,7 +145,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Pydantic v2 integration via `__get_pydantic_core_schema__`.
 - Full test suite, CI, and release workflows.
 
-[Unreleased]: https://github.com/MathiasPaulenko/enumplus/compare/v1.2.2...HEAD
+[Unreleased]: https://github.com/MathiasPaulenko/enumplus/compare/v1.2.3...HEAD
+[1.2.3]: https://github.com/MathiasPaulenko/enumplus/releases/tag/v1.2.3
 [1.2.2]: https://github.com/MathiasPaulenko/enumplus/releases/tag/v1.2.2
 [1.2.1]: https://github.com/MathiasPaulenko/enumplus/releases/tag/v1.2.1
 [1.2.0]: https://github.com/MathiasPaulenko/enumplus/releases/tag/v1.2.0
