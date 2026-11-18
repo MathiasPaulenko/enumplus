@@ -33,7 +33,7 @@ def test_access_by_value() -> None:
         RED = "red"
         GREEN = "green"
 
-    assert Color("red") is Color.RED  # type: ignore[call-arg]
+    assert Color("red") is Color.RED
 
 
 def test_iteration_order() -> None:

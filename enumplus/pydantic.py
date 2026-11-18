@@ -31,6 +31,8 @@ def get_pydantic_core_schema(
     from pydantic_core import core_schema
 
     serialize_by_name = getattr(cls, "serialize_by_name", False)
+    if not isinstance(serialize_by_name, bool):
+        serialize_by_name = False
 
     def validate(value: Any) -> Any:
         if isinstance(value, cls):

@@ -21,11 +21,15 @@ def to_json(cls: type[Enum]) -> str:
           ]
         }
     """
+    if not isinstance(cls, type) or not issubclass(cls, Enum):
+        raise TypeError(
+            f"to_json expects an Enum subclass, got {type(cls).__name__}"
+        )
     members: list[dict[str, Any]] = []
     for member in cls:
         label = member.label
         metadata: dict[str, Any] = {}
-        for k, v in member._metadata_.items():
+        for k, v in member.metadata.items():
             if k == "label" and callable(v):
                 metadata[k] = label
             else:

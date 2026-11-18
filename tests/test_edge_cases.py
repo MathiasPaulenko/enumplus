@@ -1492,3 +1492,283 @@ def test_filter_by_explicit_label() -> None:
     assert C.filter(label="Alpha") == [C.A]
     assert C.filter(label="Alpha", kind="k") == [C.A]
     assert C.filter(label="Alpha", kind="other") == []
+
+
+# ---------- Metadata access during member __init__ ----------
+
+
+def test_member_init_reads_label() -> None:
+    seen: list[str] = []
+
+    class Color(Enum):
+        RED = ("red", {"label": "Custom Red"})
+        GREEN = "green"
+
+        def __init__(self, *_args: object) -> None:
+            seen.append(self.label)
+
+    assert seen == ["Custom Red", "Green"]
+
+
+def test_member_init_reads_metadata() -> None:
+    seen: list[dict[str, Any]] = []
+
+    class Color(Enum):
+        RED = ("red", {"hex": "#FF0000"})
+        BLUE = "blue"
+
+        def __init__(self, *_args: object) -> None:
+            seen.append(dict(self.metadata))
+
+    assert seen == [{"hex": "#FF0000"}, {}]
+
+
+def test_member_init_reads_metadata_attribute() -> None:
+    seen: list[Any] = []
+
+    class Color(Enum):
+        RED = ("red", {"hex": "#FF0000"})
+
+        def __init__(self, *_args: object) -> None:
+            seen.append(self.hex)
+
+    assert seen == ["#FF0000"]
+
+
+def test_member_init_str_uses_label() -> None:
+    seen: list[str] = []
+
+    class Status(Enum):
+        IN_PROGRESS = "in_progress"
+
+        def __init__(self, *_args: object) -> None:
+            seen.append(str(self))
+
+    assert seen == ["In Progress"]
+
+
+def test_member_init_repr() -> None:
+    seen: list[str] = []
+
+    class Color(Enum):
+        RED = "red"
+
+        def __init__(self, *_args: object) -> None:
+            seen.append(repr(self))
+
+    assert seen == ["<Color.RED: 'red'>"]
+
+
+def test_member_init_missing_metadata_attribute() -> None:
+    seen: list[Any] = []
+
+    class Color(Enum):
+        RED = "red"
+
+        def __init__(self, *_args: object) -> None:
+            try:
+                seen.append(self.hex)
+            except AttributeError:
+                seen.append(None)
+
+    assert seen == [None]
+
+
+def test_member_init_pending_attribute_not_leaked() -> None:
+    class Color(Enum):
+        RED = "red"
+
+        def __init__(self, *_args: object) -> None:
+            _ = self.label
+
+    assert "_enumplus_pending_metadata" not in vars(Color)
+
+
+# ---------- _simple_enum graceful degradation ----------
+
+
+def test_simple_enum_members_basic_behavior() -> None:
+    class _Shade:
+        DARK = 1
+        LIGHT = 2
+
+    Shade: Any = enum._simple_enum(etype=Enum)(_Shade)  # type: ignore[attr-defined]
+
+    assert Shade.DARK.value == 1
+    assert Shade.DARK.label == "Dark"
+    assert Shade.LIGHT.label == "Light"
+    assert Shade.DARK.metadata == {}
+    assert Shade.names() == ["DARK", "LIGHT"]
+    assert Shade.values() == [1, 2]
+    assert Shade.choices() == [(1, "Dark"), (2, "Light")]
+    assert Shade.labels() == ["Dark", "Light"]
+    assert Shade.filter(unused="x") == []
+    assert Shade.to_dict() == {
+        "DARK": {"value": 1, "label": "Dark", "metadata": {}},
+        "LIGHT": {"value": 2, "label": "Light", "metadata": {}},
+    }
+    assert json.loads(Shade.to_json())["name"] == "_Shade"
+    with pytest.raises(AttributeError):
+        _ = Shade.DARK.hex
+
+
+def test_simple_enum_ordered() -> None:
+    class _P:
+        LOW = 1
+        HIGH = 2
+
+    P: Any = enum._simple_enum(etype=OrderedEnum)(_P)  # type: ignore[attr-defined]
+
+    assert P.LOW < P.HIGH
+    assert P.HIGH > P.LOW
+    assert sorted([P.HIGH, P.LOW]) == [P.LOW, P.HIGH]
+
+
+# ---------- Enum member as value: equality coherence ----------
+
+
+def test_member_equals_its_own_enum_value() -> None:
+    class Inner(Enum):
+        X = "x"
+        Y = "y"
+
+    class Outer(Enum):
+        A = Inner.X
+
+    assert Outer.A == Inner.X
+    assert Outer.A != Inner.Y
+
+
+def test_enum_value_equals_wrapping_member() -> None:
+    class Inner(Enum):
+        X = "x"
+        Y = "y"
+
+    class Outer(Enum):
+        A = Inner.X
+
+    assert Inner.X == Outer.A
+    assert Inner.Y != Outer.A
+
+
+def test_contains_wrapping_member_of_enum_value() -> None:
+    class Inner(Enum):
+        X = "x"
+        Y = "y"
+
+    class Outer(Enum):
+        A = Inner.X
+
+    assert Outer.A in Inner
+    assert Inner.Y not in Outer
+
+
+def test_from_value_wrapping_member_of_enum_value() -> None:
+    class Inner(Enum):
+        X = "x"
+
+    class Outer(Enum):
+        A = Inner.X
+
+    assert Inner.from_value(Outer.A) is Inner.X
+
+
+def test_call_lookup_matches_from_value() -> None:
+    class Inner(Enum):
+        X = "x"
+        Y = "y"
+
+    class Outer(Enum):
+        A = Inner.X
+
+    assert Outer("x") is Outer.A
+    assert Outer(Inner.X) is Outer.A
+    with pytest.raises(ValueError):
+        Outer(Inner.Y)
+
+
+def test_call_lookup_matches_from_value_safe_equal() -> None:
+    class Weird:
+        def __eq__(self, other: object) -> bool:
+            raise RuntimeError("boom")
+
+        def __hash__(self) -> int:
+            return hash("weird")
+
+    class C(Enum):
+        A = "a"
+
+    assert C.from_value(Weird(), default=None) is None
+    with pytest.raises(ValueError):
+        C(Weird())
+
+
+# ---------- map() input validation ----------
+
+
+def test_map_rejects_non_mapping() -> None:
+    class Color(Enum):
+        RED = "red"
+
+    with pytest.raises(TypeError, match="expects a mapping"):
+        Color.map([Color.RED, "x"])  # type: ignore[arg-type]
+    with pytest.raises(TypeError, match="expects a mapping"):
+        Color.map(None)  # type: ignore[arg-type]
+    with pytest.raises(TypeError, match="expects a mapping"):
+        Color.map("RED")  # type: ignore[arg-type]
+
+
+def test_map_accepts_mapping_subclass() -> None:
+    from types import MappingProxyType
+
+    class Color(Enum):
+        RED = "red"
+
+    proxy = MappingProxyType({Color.RED: 1})
+    assert Color.map(proxy) == {"RED": 1}
+
+
+# ---------- Flag mixin keeps stdlib _missing_ ----------
+
+
+def test_flag_mixin_composite_lookup() -> None:
+    class F(Enum, enum.Flag):
+        A = 1
+        B = 2
+        C = 4
+
+    composite = F.A | F.B
+    assert composite.value == 3
+    assert F(3) is composite
+    assert (F.A | F.B) & F.A is F.A
+
+
+def test_intflag_mixin_composite_lookup() -> None:
+    class F(Enum, enum.IntFlag):
+        A = 1
+        B = 2
+
+    assert (F.A | F.B).value == 3
+    assert F(3).value == 3
+
+
+def test_flag_mixin_strict_boundary() -> None:
+    class F(Enum, enum.Flag, boundary=enum.STRICT):
+        A = 1
+
+    with pytest.raises(ValueError):
+        F(8)
+
+
+def test_flag_mixin_custom_missing_wins() -> None:
+    class F(Enum, enum.Flag):
+        A = 1
+
+        @classmethod
+        def _missing_(cls, value: Any) -> Any:
+            if value == "special":
+                return cls.A
+            return super()._missing_(value)
+
+    assert F("special") is F.A
+    assert (F.A | F.A).value == 1

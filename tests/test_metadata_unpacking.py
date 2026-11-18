@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any, NamedTuple
+
 from enumplus import Enum
 
 
@@ -46,3 +48,40 @@ def test_empty_metadata_dict() -> None:
 
     assert Color.RED.value == "red"  # type: ignore[comparison-overlap]
     assert Color.RED._metadata_ == {}
+
+
+def test_namedtuple_value_not_unpacked() -> None:
+    class Point(NamedTuple):
+        x: int
+        data: dict[str, Any]
+
+    class Coord(Enum):
+        A = Point(1, {"label": "not metadata"})
+
+    assert Coord.A.value == Point(1, {"label": "not metadata"})
+    assert Coord.A._metadata_ == {}
+    assert Coord.A.label == "A"
+
+
+def test_tuple_subclass_value_not_unpacked() -> None:
+    class TaggedTuple(tuple[Any, ...]):
+        pass
+
+    class T(Enum):
+        A = TaggedTuple((1, {"label": "not metadata"}))
+
+    assert T.A.value == TaggedTuple((1, {"label": "not metadata"}))
+    assert T.A._metadata_ == {}
+
+
+def test_namedtuple_value_with_metadata_tuple() -> None:
+    class Point(NamedTuple):
+        x: int
+        y: int
+
+    class Coord(Enum):
+        A = (Point(1, 2), {"label": "Origin area"})
+
+    assert Coord.A.value == Point(1, 2)  # type: ignore[comparison-overlap]
+    assert Coord.A._metadata_ == {"label": "Origin area"}
+    assert Coord.A.label == "Origin area"

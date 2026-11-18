@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import enum
 import sys
+from collections.abc import Mapping
 from types import NotImplementedType
-from typing import Any, Self, TypeVar, dataclass_transform, overload
+from typing import Any, Self, TypeVar, overload
 
 if sys.version_info >= (3, 13):
     from enum import EnumDict
@@ -12,6 +13,7 @@ else:
 
 _SENTINEL = object()
 _T = TypeVar("_T")
+_PENDING_METADATA_ATTR = "_enumplus_pending_metadata"
 
 
 class _EnumPlusDict(EnumDict):
@@ -52,7 +54,7 @@ class _EnumPlusDict(EnumDict):
             return
 
         if (
-            isinstance(value, tuple)
+            type(value) is tuple
             and len(value) == 2
             and isinstance(value[1], dict)
         ):
@@ -82,7 +84,21 @@ def _safe_equal(a: Any, b: Any) -> bool:
         return False
 
 
-@dataclass_transform()
+def _match_enum_member(cls: Any, item: enum.Enum) -> Any | None:
+    """Return the member linked to ``item`` by value-object identity.
+
+    An enum member input matches when it IS a member's value object
+    (``member.value is item``) or when its own value object IS a member
+    (``member is item.value``). Identity matching avoids the cross-enum
+    false positives that plain equality would produce.
+    """
+    item_value = item.__dict__.get("_value_", _SENTINEL)
+    for member in cls:
+        if member.value is item or member is item_value:
+            return member
+    return None
+
+
 class EnumMeta(enum.EnumMeta):
     """Metaclass for enumplus enums.
 
@@ -131,13 +147,20 @@ class EnumMeta(enum.EnumMeta):
             class_config = {}
             for key, value in list(namespace.items()):
                 if (
-                    isinstance(value, tuple)
+                    type(value) is tuple
                     and len(value) == 2
                     and isinstance(value[1], dict)
                 ):
                     actual_value, metadata = value
                     member_metadata[key] = metadata
                     dict.__setitem__(namespace, key, actual_value)
+
+        # Expose the pending metadata map as a temporary class attribute so
+        # members can resolve it during __init__ — stdlib runs member
+        # __init__ inside super().__new__, before _metadata_ exists.
+        had_pending = _PENDING_METADATA_ATTR in namespace
+        previous_pending = dict.get(namespace, _PENDING_METADATA_ATTR)
+        dict.__setitem__(namespace, _PENDING_METADATA_ATTR, member_metadata)
 
         new_cls = super().__new__(cls, name, bases, namespace, **kwargs)
 
@@ -161,6 +184,11 @@ class EnumMeta(enum.EnumMeta):
 
             member._index_ = index
 
+        if had_pending:
+            setattr(new_cls, _PENDING_METADATA_ATTR, previous_pending)
+        else:
+            delattr(new_cls, _PENDING_METADATA_ATTR)
+
         return new_cls
 
     def __contains__(cls, item: Any) -> bool:
@@ -168,12 +196,7 @@ class EnumMeta(enum.EnumMeta):
             return True
         member: Any
         if isinstance(item, enum.Enum):
-            # Foreign enum member: only match if a member's value IS this
-            # exact enum member (identity), not just equal by value.
-            for member in cls:
-                if member.value is item:
-                    return True
-            return False
+            return _match_enum_member(cls, item) is not None
         for member in cls:
             if _safe_equal(member.value, item):
                 return True
@@ -203,6 +226,25 @@ class Enum(enum.Enum, metaclass=EnumMeta):
     _metadata_: dict[str, Any]
     _index_: int
 
+    def _resolve_metadata(self) -> dict[str, Any]:
+        """Return this member's metadata, even while ``__init__`` is running.
+
+        stdlib runs member ``__init__`` before ``EnumMeta.__new__`` can attach
+        ``_metadata_``; during that window the map is reachable through the
+        temporary ``_enumplus_pending_metadata`` class attribute. Members
+        created via ``enum._simple_enum`` never get ``_metadata_`` at all and
+        resolve to an empty dict.
+        """
+        metadata: dict[str, Any] | None = self.__dict__.get("_metadata_")
+        if metadata is not None:
+            return metadata
+        pending = type(self).__dict__.get(_PENDING_METADATA_ATTR)
+        name: str | None = self.__dict__.get("_name_")
+        if not isinstance(pending, dict) or name is None:
+            return {}
+        found = pending.get(name, {})
+        return found if isinstance(found, dict) else {}
+
     @property
     def label(self) -> str:
         """Human-readable label for this member.
@@ -210,7 +252,12 @@ class Enum(enum.Enum, metaclass=EnumMeta):
         If the label was set to a callable, it is evaluated on every access.
         Falls back to ``name.replace("_", " ").title()`` when no label is set.
         """
-        label = self._label_
+        label = self.__dict__.get("_label_", _SENTINEL)
+        if label is _SENTINEL:
+            raw = self._resolve_metadata().get("label")
+            if raw is None:
+                raw = (self.__dict__.get("_name_") or "").replace("_", " ").title()
+            label = raw
         if callable(label):
             return str(label())
         return str(label)
@@ -218,16 +265,17 @@ class Enum(enum.Enum, metaclass=EnumMeta):
     @property
     def metadata(self) -> dict[str, Any]:
         """Metadata dictionary attached to this member."""
-        return self._metadata_
+        return self._resolve_metadata()
 
     def __getattr__(self, name: str) -> Any:
         if name.startswith("_"):
             raise AttributeError(name)
         try:
-            return self._metadata_[name]
+            return self._resolve_metadata()[name]
         except KeyError:
+            member_name = self.__dict__.get("_name_", "?")
             raise AttributeError(
-                f"{type(self).__name__}.{self.name!s} has no attribute {name!r}"
+                f"{type(self).__name__}.{member_name!s} has no attribute {name!r}"
             ) from None
 
     def __str__(self) -> str:
@@ -238,7 +286,14 @@ class Enum(enum.Enum, metaclass=EnumMeta):
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, enum.Enum):
-            return self is other
+            # Identity only: a member equals another member when it is the same
+            # object, when it IS this member's value object, or when the other
+            # member's value object IS this member.
+            return (
+                self is other
+                or self.__dict__.get("_value_") is other
+                or other.__dict__.get("_value_") is self
+            )
         return _safe_equal(self.value, other)
 
     def __hash__(self) -> int:
@@ -246,6 +301,34 @@ class Enum(enum.Enum, metaclass=EnumMeta):
             return hash(self.value)
         except TypeError:
             return id(self)
+
+    @classmethod
+    def _missing_(cls, value: Any) -> Any:
+        """Lookup fallback for ``cls(value)``, matching ``from_value()`` semantics.
+
+        Keeps ``cls(value)`` consistent with ``cls.from_value(value)``: enum
+        member inputs match by value-object identity, everything else by safe
+        equality. Without it, ``cls(value)`` raises for values that
+        ``from_value()`` resolves (e.g. a member whose value is itself an enum
+        member compared through a non-hash-stable ``__eq__``).
+
+        Classes mixing in ``enum.Flag`` delegate to the stdlib implementation:
+        flag lookups need boundary handling and composite pseudo-members.
+        """
+        if issubclass(cls, enum.Flag):
+            for base in cls.__mro__:
+                if not issubclass(base, enum.Flag):
+                    continue
+                missing = base.__dict__.get("_missing_")
+                if missing is not None:
+                    return missing.__get__(None, cls)(value)
+            return None
+        if isinstance(value, enum.Enum):
+            return _match_enum_member(cls, value)
+        for member in cls:
+            if _safe_equal(member.value, value):
+                return member
+        return None
 
     @classmethod
     def choices(cls) -> list[tuple[Any, str]]:
@@ -289,11 +372,9 @@ class Enum(enum.Enum, metaclass=EnumMeta):
         if isinstance(value, cls):
             return value
         if isinstance(value, enum.Enum):
-            # Foreign enum member: only match if a member's value IS this
-            # exact enum member (identity), not just equal by value.
-            for member in cls:
-                if member.value is value:
-                    return member
+            member = _match_enum_member(cls, value)
+            if member is not None:
+                return member
             if default is not _SENTINEL:
                 return default
             raise ValueError(f"{value!r} is not a valid {cls.__name__} value")
@@ -365,12 +446,7 @@ class Enum(enum.Enum, metaclass=EnumMeta):
         if isinstance(value, cls):
             return True
         if isinstance(value, enum.Enum):
-            # Foreign enum member: only match if a member's value IS this
-            # exact enum member (identity), not just equal by value.
-            for member in cls:
-                if member.value is value:
-                    return True
-            return False
+            return _match_enum_member(cls, value) is not None
         for member in cls:
             if member is value or _safe_equal(member.value, value):
                 return True
@@ -443,12 +519,19 @@ class Enum(enum.Enum, metaclass=EnumMeta):
         return members[-1]
 
     @classmethod
-    def map(cls, mapping: dict[Self, Any]) -> dict[str, Any]:
+    def map(cls, mapping: Mapping[Self, Any]) -> dict[str, Any]:
         """Map each member to a value via ``mapping``.
 
         Returns ``{name: mapped_value}`` for every member. Members not present
         in ``mapping`` get ``None``.
+
+        Raises:
+            TypeError: If ``mapping`` is not a mapping.
         """
+        if not isinstance(mapping, Mapping):
+            raise TypeError(
+                f"map expects a mapping, got {type(mapping).__name__}"
+            )
         result: dict[str, Any] = {}
         for member in cls:
             result[member.name] = mapping.get(member, None)
@@ -461,7 +544,7 @@ class Enum(enum.Enum, metaclass=EnumMeta):
         for member in cls:
             label = member.label
             metadata: dict[str, Any] = {}
-            for k, v in member._metadata_.items():
+            for k, v in member.metadata.items():
                 if k == "label" and callable(v):
                     metadata[k] = label
                 else:
@@ -484,11 +567,11 @@ class Enum(enum.Enum, metaclass=EnumMeta):
             return list(cls)
         result: list[Self] = []
         for member in cls:
+            metadata = member.metadata
             if all(
                 _safe_equal(member.label, value)
                 if key == "label"
-                else key in member._metadata_
-                and _safe_equal(member._metadata_[key], value)
+                else key in metadata and _safe_equal(metadata[key], value)
                 for key, value in kwargs.items()
             ):
                 result.append(member)
@@ -529,22 +612,41 @@ class OrderedEnum(Enum):
     Also works with ``sorted()``, ``min()``, and ``max()``.
     """
 
+    def _sort_index(self) -> int:
+        """Declaration-order index used by the comparison operators.
+
+        ``_index_`` is attached by ``EnumMeta.__new__`` after member creation.
+        Members built outside that path (``enum._simple_enum``) fall back to
+        the stdlib ``_sort_order_``, and during member ``__init__`` — before
+        either exists — to the number of members registered so far.
+        """
+        index: int | None = self.__dict__.get("_index_")
+        if index is not None:
+            return index
+        sort_order: int | None = self.__dict__.get("_sort_order_")
+        if sort_order is not None:
+            return sort_order
+        names: list[str] | None = type(self).__dict__.get("_member_names_")
+        if names is not None:
+            return len(names)
+        return 0
+
     def __lt__(self, other: object) -> bool | NotImplementedType:
         if not isinstance(other, type(self)):
             return NotImplemented
-        return self._index_ < other._index_
+        return self._sort_index() < other._sort_index()
 
     def __le__(self, other: object) -> bool | NotImplementedType:
         if not isinstance(other, type(self)):
             return NotImplemented
-        return self._index_ <= other._index_
+        return self._sort_index() <= other._sort_index()
 
     def __gt__(self, other: object) -> bool | NotImplementedType:
         if not isinstance(other, type(self)):
             return NotImplemented
-        return self._index_ > other._index_
+        return self._sort_index() > other._sort_index()
 
     def __ge__(self, other: object) -> bool | NotImplementedType:
         if not isinstance(other, type(self)):
             return NotImplemented
-        return self._index_ >= other._index_
+        return self._sort_index() >= other._sort_index()
