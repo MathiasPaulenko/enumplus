@@ -405,19 +405,16 @@ Callable labels work everywhere: `choices()`, `to_dict()`, `to_json()`, `labels(
 
 ### Type hints in metadata
 
-The `@dataclass_transform()` decorator on the metaclass enables type checkers to recognize metadata fields.
+Metadata attributes are resolved at runtime through `__getattr__`, which
+returns `Any`. Type checkers therefore accept `member.<key>` accesses as
+`Any`, but cannot verify individual key names or value types.
 
 ```python
 class Color(Enum):
     RED = ("red", {"hex": "#FF0000"})
 
-# Type checkers recognize .hex as a valid attribute
 Color.RED.hex  # inferred as Any via __getattr__
 ```
-
-> **Note:** Type inference for metadata attributes depends on the type checker.
-> The `@dataclass_transform()` decorator provides the structural hint, but
-> runtime attribute access goes through `__getattr__`, which returns `Any`.
 
 ## Migration from stdlib
 

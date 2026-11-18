@@ -24,11 +24,28 @@ Requires Python `>=3.11`.
   - Support `auto()` following a metadata tuple on Python 3.11–3.14.
 - `serialize_by_name` is a reserved class config key: it must be a `bool`
   (`TypeError` otherwise) and can never be a member name.
+- Metadata tuples are detected with `type(value) is tuple` (not
+  `isinstance`), so tuple subclasses such as `NamedTuple` stay intact as
+  member values.
+- During class creation, `EnumMeta.__new__` injects the collected metadata map
+  as the temporary `_enumplus_pending_metadata` class attribute and removes it
+  after member post-processing. `Enum._resolve_metadata()` reads `_metadata_`
+  first, then the pending map, so `label`/`metadata`/metadata attributes work
+  inside member `__init__`. Members created via `enum._simple_enum` never get
+  `_metadata_`/`_label_`/`_index_`; accessors degrade gracefully to auto
+  labels, empty metadata, and `_sort_order_`-based ordering.
 - Auto-generated labels use `name.replace("_", " ").title()`. `filter(label=...)`
   matches the evaluated label, not the raw metadata dict.
-- `Enum.__eq__` and `EnumMeta.__contains__` use `_safe_equal`, which coerces
-  `a == b` to a `bool` without raising on shape/length mismatches (e.g. NumPy
-  arrays, unhashable container values).
+- `Enum.__eq__` compares enum-to-enum by identity links only (`self is other`,
+  `self.value is other`, `other.value is self`) and everything else through
+  `_safe_equal`, which coerces `a == b` to a `bool` without raising on
+  shape/length mismatches (e.g. NumPy arrays, unhashable container values).
+  `EnumMeta.__contains__`, `from_value()`, `is_valid()`, and `_missing_()`
+  share `_match_enum_member` for the enum-member branch.
+- `Enum._missing_` is implemented so `cls(value)` lookup agrees with
+  `from_value()` on misses. For classes mixing in `enum.Flag`/`enum.IntFlag`
+  it delegates to the nearest Flag-family `_missing_` in the MRO, preserving
+  composite pseudo-members and `boundary=` semantics.
 - `Enum.__hash__` uses `hash(self.value)` when possible and falls back to
   `id(self)` for unhashable values, so enum members with list/dict values are
   still usable as dict keys.
